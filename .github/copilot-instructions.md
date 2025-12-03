@@ -111,6 +111,8 @@ pnpm format       # 使用 Prettier 格式化 tsx 檔案
 3. **Tailwind 衝突**: 部分 Tailwind class 與 WordPress 衝突，使用 `tw-` 前綴替代 (`tw-hidden`, `tw-block`, `tw-fixed` 等)
 4. **安全性**: 使用 `\wp_create_nonce('wp_rest')` 產生的 nonce 進行 API 認證
 5. **TypeScript**: 前端代碼必須使用 TypeScript，型別定義在 `js/src/types/`
+6. 修改 php 代碼必須遵守 `.github\instructions\wordpress.instructions.md` 指引
+7. 修改 ts, tsx 代碼必須遵守 `.github\instructions\react.instructions.md` 指引
 
 ### 已知限制
 1. ESLint 與 prettier-plugin-multiline-arrays 可能有相容性問題
