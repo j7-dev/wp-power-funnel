@@ -5,7 +5,6 @@ declare (strict_types = 1);
 namespace J7\PowerFunnel;
 
 use J7\PowerFunnel\Utils\Base;
-use J7\PowerFunnel\Domains;
 use Kucrut\Vite;
 
 if ( class_exists( 'J7\PowerFunnel\Bootstrap' ) ) {
