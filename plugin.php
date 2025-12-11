@@ -39,7 +39,6 @@ final class Plugin {
 	 * Constructor
 	 */
 	public function __construct() {
-
 		// self::$template_page_names = [ '404' ];
 
 		$this->required_plugins = [
@@ -63,7 +62,7 @@ final class Plugin {
 				'app_name'    => 'Power Funnel',
 				'github_repo' => 'https://github.com/j7-dev/wp-power-funnel',
 				'callback'    => [ Bootstrap::class, 'register_hooks' ],
-				'lc'          => 'ZmFsc2',
+				'lc'          => false,
 			]
 		);
 	}

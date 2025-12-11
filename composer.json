@@ -30,7 +30,8 @@
 	},
 	"require": {
 		"kucrut/vite-for-wp": "^0.12",
-		"j7-dev/wp-utils": "^0.3"
+		"j7-dev/wp-plugin-trait": "*",
+		"google/apiclient": "2.0"
 	},
 	"require-dev": {
 		"squizlabs/php_codesniffer": "@stable",
@@ -42,8 +43,36 @@
 		"php-stubs/wordpress-stubs": "@stable",
 		"phpstan/extension-installer": "@stable"
 	},
+	"extra": {
+		"strauss": {
+			"packages": [
+				"guzzlehttp/guzzle",
+				"guzzlehttp/psr7"
+			],
+			"target_directory": "vendor-prefixed",
+			"namespace_prefix": "PowerFunnel\\",
+			"classmap_prefix": "PowerFunnel_",
+			"constant_prefix": "PowerFunnel_",
+			"include_modified_date": false,
+			"delete_vendor_packages": false,
+			"exclude_from_prefix": {
+				"packages": []
+			},
+			"exclude_from_copy": {
+				"file_patterns": [
+					"/examples/"
+				]
+			}
+		}
+	},
 	"scripts": {
 		"lint": "phpcs",
-		"analyse": "phpstan analyse inc --memory-limit=6G"
+		"analyse": "phpstan analyse inc --memory-limit=6G",
+		"strauss:clean": "php bin/strauss-clean.php",
+		"strauss:run": "php bin/strauss-wrapper.php",
+		"strauss": [
+			"@strauss:clean",
+			"@strauss:run"
+		]
 	}
 }

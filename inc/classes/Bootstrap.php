@@ -4,20 +4,29 @@ declare (strict_types = 1);
 
 namespace J7\PowerFunnel;
 
+use J7\PowerFunnel\Infrastructure\Youtube\Services\DataApiService;
 use J7\PowerFunnel\Utils\Base;
 use Kucrut\Vite;
 
-if ( class_exists( 'J7\PowerFunnel\Bootstrap' ) ) {
-	return;
-}
+
 /** Class Bootstrap */
 final class Bootstrap {
 
 	/** Register hooks */
 	public static function register_hooks(): void {
 		Domains\Admin\Entry::register_hooks();
+		Domains\PromoLink\Services\RegisterService::register_hooks();
 
 		\add_action( 'admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ] );
+
+		// TEST ----- ▼ 測試特定 hook 記得刪除 ----- //
+		\add_action(
+			'wp_head',
+			function () {
+				DataApiService::instance();
+			}
+			);
+		// TEST ---------- END ---------- //
 	}
 
 	/**
@@ -28,7 +37,7 @@ final class Bootstrap {
 	 *
 	 * @return void
 	 */
-	public static function admin_enqueue_script( $hook ): void {
+	public static function admin_enqueue_script( $hook ): void { // phpcs:ignore
 		self::enqueue_script();
 	}
 

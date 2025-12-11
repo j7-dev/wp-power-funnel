@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import GetPostsPage from '@/pages/getPosts'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Banner from '@/components/Banner'
 
 function DefaultPage() {
