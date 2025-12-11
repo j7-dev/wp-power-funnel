@@ -31,7 +31,7 @@
 	"require": {
 		"kucrut/vite-for-wp": "^0.12",
 		"j7-dev/wp-plugin-trait": "*",
-		"google/apiclient": "2.0"
+		"google/apiclient": "^2.0"
 	},
 	"require-dev": {
 		"squizlabs/php_codesniffer": "@stable",
