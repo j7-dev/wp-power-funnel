@@ -5,9 +5,9 @@
  * Description:       自動抓取 Youtube 直播場次，讓用戶可以透過 LINE 報名
  * Version:           0.0.1
  * Requires at least: 5.7
- * Requires PHP:      8.0
- * Author:            Your Name
- * Author URI:        https://github.com/j7-dev/wp-power-funnel
+ * Requires PHP:      8.1
+ * Author:            J7
+ * Author URI:        https://github.com/j7-dev
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       power_funnel
@@ -65,6 +65,18 @@ final class Plugin {
 				'lc'          => false,
 			]
 		);
+	}
+
+	/**
+	 * 印出 WC Logger
+	 *
+	 * @param string $message     訊息
+	 * @param string $level       等級
+	 * @param array  $args        參數
+	 * @param int    $trace_limit 堆疊深度
+	 */
+	public static function logger( string $message, string $level, array $args = [], $trace_limit = 0 ): void {
+		\J7\WpUtils\Classes\WC::logger( $message, $level, $args, self::$kebab, $trace_limit );
 	}
 }
 
