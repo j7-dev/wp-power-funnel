@@ -35,4 +35,5 @@ release/*
 *.sw?
 
 /vendor/
+/vendor-prefixed/
 bin/strauss.phar

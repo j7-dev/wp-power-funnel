@@ -1,49 +1,78 @@
 {
-    "name": "j7-dev/power-funnel",
-    "description": "This is a boilerplate for creating a WordPress plugin with React, Tailwind, Ant Design, TypeScript, Zod, MSW, React Router v6, React Query v4, SCSS and Vite.",
-    "type": "wordpress-plugin",
-    "license": "GPL-2.0-only",
-    "authors": [
-        {
-            "name": "JerryLiu",
-            "email": "j7.dev.gg@gmail.com",
-            "homepage": "https://github.com/j7-dev",
-            "role": "Developer"
-        }
-    ],
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "https://wpackagist.org"
-        }
-    ],
-    "autoload": {
-        "psr-4": {
-            "J7\\PowerFunnel\\": "inc/classes/"
-        }
-    },
-    "config": {
-        "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": true,
-            "phpstan/extension-installer": true
-        }
-    },
-    "require": {
-        "kucrut/vite-for-wp": "^0.12",
-        "j7-dev/wp-plugin-trait": "*"
-    },
-    "require-dev": {
-        "squizlabs/php_codesniffer": "@stable",
-        "wp-coding-standards/wpcs": "@stable",
-        "dealerdirect/phpcodesniffer-composer-installer": "@stable",
-        "phpcompatibility/php-compatibility": "@stable",
-        "phpstan/phpstan": "@stable",
-        "php-stubs/woocommerce-stubs": "@stable",
-        "php-stubs/wordpress-stubs": "@stable",
-        "phpstan/extension-installer": "@stable"
-    },
-    "scripts": {
-        "lint": "phpcs",
-        "analyse": "phpstan analyse inc --memory-limit=6G"
-    }
+	"name": "j7-dev/power-funnel",
+	"description": "This is a boilerplate for creating a WordPress plugin with React, Tailwind, Ant Design, TypeScript, Zod, MSW, React Router v6, React Query v4, SCSS and Vite.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-only",
+	"authors": [
+		{
+			"name": "JerryLiu",
+			"email": "j7.dev.gg@gmail.com",
+			"homepage": "https://github.com/j7-dev",
+			"role": "Developer"
+		}
+	],
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "https://wpackagist.org"
+		}
+	],
+	"autoload": {
+		"psr-4": {
+			"J7\\PowerFunnel\\": "inc/classes/"
+		}
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"phpstan/extension-installer": true
+		}
+	},
+	"require": {
+		"kucrut/vite-for-wp": "^0.12",
+		"j7-dev/wp-plugin-trait": "*",
+		"linecorp/line-bot-sdk": "^12.3"
+	},
+	"require-dev": {
+		"squizlabs/php_codesniffer": "@stable",
+		"wp-coding-standards/wpcs": "@stable",
+		"dealerdirect/phpcodesniffer-composer-installer": "@stable",
+		"phpcompatibility/php-compatibility": "@stable",
+		"phpstan/phpstan": "@stable",
+		"php-stubs/woocommerce-stubs": "@stable",
+		"php-stubs/wordpress-stubs": "@stable",
+		"phpstan/extension-installer": "@stable"
+	},
+	"extra": {
+		"strauss": {
+			"target_directory": "vendor-prefixed",
+			"namespace_prefix": "PowerFunnel\\",
+			"classmap_prefix": "PowerFunnel_",
+			"constant_prefix": "PowerFunnel_",
+			"include_modified_date": false,
+			"delete_vendor_packages": false,
+			"include_root_autoload": true,
+			"packages": [
+				"guzzlehttp/guzzle",
+				"guzzlehttp/psr7",
+				"guzzlehttp/promises"
+			]
+		}
+	},
+	"scripts": {
+		"lint": "phpcs",
+		"analyse": "phpstan analyse inc --memory-limit=6G",
+		"strauss:clean": "php bin/strauss-clean.php",
+		"strauss:run": "php bin/strauss-wrapper.php",
+		"strauss": [
+			"@strauss:clean",
+			"@strauss:run"
+		],
+		"post-install-cmd": [
+			"@strauss"
+		],
+		"post-update-cmd": [
+			"@strauss"
+		]
+	}
 }

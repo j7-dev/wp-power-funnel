@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
 if ( \class_exists( 'J7\PowerFunnel\Plugin' ) ) {
 	return;
 }
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/vendor-prefixed/autoload.php';
 
 /**
 	* Class Plugin
