@@ -7,6 +7,7 @@ namespace J7\PowerFunnel\Infrastructure\Youtube\Services;
 use J7\PowerFunnel\Contracts\DTOs\ActivityDTO;
 use J7\PowerFunnel\Infrastructure\Youtube\DTOs\SettingDTO;
 use J7\WpUtils\Traits\SingletonTrait;
+use J7\PowerFunnel\Contracts\Interfaces\IActivityProvider;
 
 /**
  * Class DataApiService
@@ -14,7 +15,7 @@ use J7\WpUtils\Traits\SingletonTrait;
  *
  * @see https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
  */
-final class DataApiService {
+final class DataApiService implements IActivityProvider {
 	use SingletonTrait;
 
 	/** @var string 活動提供商 id */
@@ -42,10 +43,22 @@ final class DataApiService {
 	 * @throws \Exception 當授權失敗時拋出異常
 	 */
 	private function __construct() {
+		\add_action('power_funnel/activity_providers', [ __CLASS__, 'register_provider' ]);
 		$this->init_oauth_service();
 		$this->load_token();
 		$this->handle_oauth_callback();
 		$this->ensure_valid_token();
+	}
+
+	/**
+	 * 註冊活動提供商
+	 *
+	 * @param array<IActivityProvider> $providers 目前的活動提供商陣列
+	 * @return array<IActivityProvider> 更新後的活動提供商陣列
+	 */
+	public static function register_provider( array $providers ): array {
+		$providers[] = self::instance();
+		return $providers;
 	}
 
 	/**
@@ -214,10 +227,7 @@ final class DataApiService {
 		}
 
 		$youtube_service = new YoutubeLiveService( $access_token );
-		$response        = $youtube_service->get_live_broadcasts(
-			'id,snippet',
-			[ 'mine' => true ]
-		);
+		$response        = $youtube_service->get_live_broadcasts();
 
 		$activities = [];
 		$items      = $response['items'] ?? [];

@@ -28,16 +28,21 @@ final class YoutubeLiveService {
 	}
 
 	/**
-	 * 取得直播列表
+	 * 取得直播列表，預設抓100個直播
 	 *
 	 * @param string               $part 要取得的資料部分，以逗號分隔 (id, snippet, contentDetails, monetizationDetails, status)
 	 * @param array<string, mixed> $params 額外參數
 	 * @return array<string, mixed> API 回應資料
 	 * @throws \Exception 當 API 請求失敗時拋出異常
+	 * @see https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
 	 */
 	public function get_live_broadcasts( string $part = 'id,snippet', array $params = [] ): array {
-		$query_params         = array_merge( $params, [ 'part' => $part ] );
-		$query_params['mine'] = isset( $query_params['mine'] ) && $query_params['mine'] ? 'true' : 'false';
+		$default_params = [
+			'part'            => $part,
+			'broadcastStatus' => 'upcoming',
+			'maxResults'      => 100,
+		];
+		$query_params   = \wp_parse_args( $params, $default_params );
 
 		$url = self::API_BASE_URL . '/liveBroadcasts?' . http_build_query( $query_params );
 
