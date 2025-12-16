@@ -33,10 +33,11 @@ final class RegisterService {
 			'supports'           => [ 'title', 'editor', 'author', 'thumbnail', 'excerpt', 'comments' ],
 		];
 
+		// @phpstan-ignore-next-line
 		\register_post_type(self::POST_TYPE, $args);
 	}
 
-	/** Get post_type labels */
+	/** @return array<string, string> Get post_type labels */
 	public static function labels(): array {
 		return [
 			'name'                  => \_x('Promo Link', 'Post type general name', 'power_funnel'),
