@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Infrastructure\Line\Services;
 
-use J7\PowerFunnel\Plugin;
 use J7\PowerFunnel\Infrastructure\Line\DTOs\SettingDTO;
-use J7\PowerFunnel\Infrastructure\Line\Services\MessageService;
+use J7\PowerFunnel\Plugin;
 use J7\WpUtils\Classes\ApiBase;
 use LINE\Constants\HTTPHeader;
 use LINE\Parser\EventRequestParser;
-use LINE\Parser\Exception\InvalidEventRequestException;
-use LINE\Parser\Exception\InvalidSignatureException;
 use LINE\Webhook\Model\MessageEvent;
 use LINE\Webhook\Model\TextMessageContent;
 
@@ -30,6 +27,11 @@ final class WebhookService extends ApiBase {
 			'permission_callback' => '__return_true',
 		],
 	];
+
+	/** Register hooks */
+	public static function register_hooks(): void {
+		self::instance( );
+	}
 
 	/**
 	 * 處理 LINE 回調的 Webhook 事件

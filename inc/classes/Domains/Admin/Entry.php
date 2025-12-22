@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Domains\Admin;
 
-use J7\PowerFunnel\Plugin;
 use J7\PowerFunnel\Bootstrap;
+use J7\PowerFunnel\Plugin;
 use J7\PowerFunnel\Utils\Base;
 use J7\Powerhouse\Utils\Base as PowerhouseBase;
 

@@ -40,6 +40,11 @@ final class SettingDTO extends DTO {
 	public string $channel_secret = '';
 
 	/**
+	 * LIFF ID
+	 */
+	public string $liff_id = '';
+
+	/**
 	 * 取得實例
 	 *
 	 * @return self

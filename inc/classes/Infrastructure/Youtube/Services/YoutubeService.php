@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace J7\PowerFunnel\Infrastructure\Youtube\Services;
 
 use J7\PowerFunnel\Contracts\DTOs\ActivityDTO;
+use J7\PowerFunnel\Contracts\Interfaces\IActivityProvider;
 use J7\PowerFunnel\Infrastructure\Youtube\DTOs\SettingDTO;
 use J7\WpUtils\Traits\SingletonTrait;
-use J7\PowerFunnel\Contracts\Interfaces\IActivityProvider;
 
 /**
  * Class DataApiService
@@ -15,7 +15,7 @@ use J7\PowerFunnel\Contracts\Interfaces\IActivityProvider;
  *
  * @see https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
  */
-final class DataApiService implements IActivityProvider {
+final class YoutubeService implements IActivityProvider {
 	use SingletonTrait;
 
 	/** @var string 活動提供商 id */
