@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Domains\Activity\Services;
 
+use J7\PowerFunnel\Contracts\DTOs\ActivityDTO;
 use J7\PowerFunnel\Contracts\Interfaces\IActivityProvider;
 use J7\WpUtils\Traits\SingletonTrait;
-use J7\PowerFunnel\Contracts\DTOs\ActivityDTO;
 
 /** ManagerService */
-final class ManagerService {
+final class ActivityService {
 	use SingletonTrait;
 
 	/** @var IActivityProvider[] $activity_providers */

@@ -64,15 +64,10 @@
 		"analyse": "phpstan analyse inc --memory-limit=6G",
 		"strauss:clean": "php bin/strauss-clean.php",
 		"strauss:run": "php bin/strauss-wrapper.php",
+		"rm:dir": "php bin/rm-dir.php",
 		"strauss": [
 			"@strauss:clean",
 			"@strauss:run"
-		],
-		"post-install-cmd": [
-			"@strauss"
-		],
-		"post-update-cmd": [
-			"@strauss"
 		]
 	}
 }

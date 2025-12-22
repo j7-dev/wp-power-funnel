@@ -4,16 +4,22 @@
  * Clean up problematic directories before running Strauss
  */
 
-$dirs_to_remove = [
-    "./vendor-prefixed",
-];
+$options = getopt('', ['dir:']);
+$dirFromOption = $options['dir'] ?? null;
 
-foreach ($dirs_to_remove as $dir) {
-	if (is_dir($dir)) {
-		echo "Removing: $dir\n";
-		deleteDirectory($dir);
-	}
+if(!$dirFromOption){
+    throw new Exception('No directory specified');
 }
+
+$dir = "./{$dirFromOption}";
+
+echo "Cleaning up: $dir\n";
+echo is_dir($dir) ? 'Directory exists' : 'Directory does not exist';
+
+if (is_dir($dir)) {
+    deleteDirectory($dir);
+}
+
 
 function deleteDirectory( $dir ) {
 	if (!file_exists($dir)) {
