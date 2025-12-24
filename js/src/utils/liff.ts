@@ -1,0 +1,79 @@
+import GetOS from "@line/liff/get-os";
+import GetAppLanguage from "@line/liff/get-app-language";
+import IsLoggedIn from "@line/liff/is-logged-in";
+import Login from "@line/liff/login";
+import GetProfile from "@line/liff/get-profile";
+import GetLineVersion from "@line/liff/get-line-version";
+import IsInClient from "@line/liff/is-in-client";
+import CloseWindow from "@line/liff/close-window";
+import { LIFF_ID } from '@/utils'
+import {axiosInstance} from '@/rest-data-provider'
+import liff from "@line/liff/core";
+
+
+type TUser = {
+    "userId": string
+    "name": string
+    "picture": string
+    "os": string
+    "version": string
+    "lineVersion": null|string,
+    "isInClient": boolean
+    "isLoggedIn": boolean
+}
+
+// 初始化 LIFF
+async function initLiff() {
+        liff.use(new GetOS());
+        liff.use(new GetAppLanguage());
+        liff.use(new IsLoggedIn());
+        liff.use(new Login());
+        liff.use(new GetProfile());
+        liff.use(new GetLineVersion());
+        liff.use(new IsInClient());
+        liff.use(new CloseWindow());
+        await liff.init({ liffId:LIFF_ID });
+        console.log("LIFF 初始化成功");
+}
+
+// 取得使用者資訊
+async function getUserProfile():Promise<TUser|null> {
+        if (!liff.isLoggedIn()) {
+            liff.login();
+            return null;
+        }
+        const profile = await liff.getProfile();
+
+        return {
+            userId: profile.userId,
+            name: profile.displayName,
+            picture: profile.pictureUrl,
+            os: liff.getOS(),
+            version: liff.getVersion(),
+            lineVersion: liff.getLineVersion(),
+            isInClient: liff.isInClient(),
+            isLoggedIn: liff.isLoggedIn(),
+        };
+
+}
+
+// 發送 API 到後端
+async function sendUserToBackend(user:TUser) {
+    if (!user) return;
+
+        const urlParams = Object.fromEntries(new URLSearchParams(window.location.search));
+        const res = await axiosInstance.post("power-funnel/liff", {
+            urlParams,
+            ...user
+        })
+        console.log("後端回應:", res);
+}
+
+// 主流程
+export async function saveLiffUserInfo() {
+    await initLiff();
+    const user = await getUserProfile();
+    console.log("user:", user);
+    // 故意不 await 請求送出就算完成
+    sendUserToBackend(user as TUser);
+}

@@ -7,6 +7,7 @@ namespace J7\PowerFunnel\Infrastructure\Youtube\Services;
 use J7\PowerFunnel\Contracts\DTOs\ActivityDTO;
 use J7\PowerFunnel\Contracts\Interfaces\IActivityProvider;
 use J7\PowerFunnel\Infrastructure\Youtube\DTOs\SettingDTO;
+use J7\PowerFunnel\Plugin;
 use J7\WpUtils\Traits\SingletonTrait;
 
 /**
@@ -43,11 +44,16 @@ final class YoutubeService implements IActivityProvider {
 	 * @throws \Exception 當授權失敗時拋出異常
 	 */
 	private function __construct() {
-		\add_action('power_funnel/activity_providers', [ __CLASS__, 'register_provider' ]);
-		$this->init_oauth_service();
-		$this->load_token();
-		$this->handle_oauth_callback();
-		$this->ensure_valid_token();
+		try {
+			\add_action('power_funnel/activity_providers', [ __CLASS__, 'register_provider' ]);
+			$this->init_oauth_service();
+			$this->load_token();
+			$this->handle_oauth_callback();
+			$this->ensure_valid_token();
+		} catch (\Throwable $e) {
+			Plugin::logger("YoutubeService init error: {$e->getMessage()}", 'error');
+			return;
+		}
 	}
 
 	/**

@@ -33,7 +33,6 @@ const mapping = [
 
 document.addEventListener('DOMContentLoaded', () => {
 	mapping.forEach(({ els, App }) => {
-		if (!!els) {
 			els.forEach((el) => {
 				ReactDOM.createRoot(el).render(
 					<React.StrictMode>
@@ -46,6 +45,5 @@ document.addEventListener('DOMContentLoaded', () => {
 					</React.StrictMode>,
 				)
 			})
-		}
 	})
 })

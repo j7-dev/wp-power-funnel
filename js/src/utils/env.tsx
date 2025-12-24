@@ -19,4 +19,6 @@ export const NONCE = env?.NONCE || ''
 export const APP1_SELECTOR = env?.APP1_SELECTOR || 'power_funnel'
 export const APP2_SELECTOR = env?.APP2_SELECTOR || 'power_funnel_metabox'
 export const ELEMENTOR_ENABLED = env?.ELEMENTOR_ENABLED || false
+export const LIFF_ID = env?.LIFF_ID || ""
+export const IS_LOCAL = env?.IS_LOCAL || ""
 

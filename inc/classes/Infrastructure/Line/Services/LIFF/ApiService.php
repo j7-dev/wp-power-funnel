@@ -6,7 +6,6 @@ namespace J7\PowerFunnel\Infrastructure\Line\Services\LIFF;
 
 use J7\PowerFunnel\Contracts\DTOs\PromoLinkDTO;
 use J7\PowerFunnel\Domains\Activity\Services\ActivityService;
-use J7\PowerFunnel\Domains\PromoLink\Shared\Helpers\PromoLinkHelper;
 use J7\PowerFunnel\Infrastructure\Line\DTOs\ProfileDTO;
 use J7\PowerFunnel\Infrastructure\Line\Services\MessageService;
 use J7\WpUtils\Classes\ApiBase;
@@ -136,11 +135,5 @@ final class ApiService extends ApiBase {
 
 		// 發送訊息
 		$line_service->send_template_message( $profile->userId, $template_message );
-
-		// 原本的文字訊息（已註解）
-		// $line_service->send_text_message(
-		// $profile->userId,
-		// 'Hello from Power Funnel! 你輸入的 promoLinkId:' . $promo_link_id
-		// );
 	}
 }

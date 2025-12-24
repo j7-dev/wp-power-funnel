@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Infrastructure\Line\Services\LIFF;
 
-use J7\PowerFunnel\Infrastructure\Line\DTOs\SettingDTO;
+use J7\PowerFunnel\Bootstrap;
 use J7\PowerFunnel\Plugin;
 
 /**
@@ -16,54 +16,19 @@ final class Register {
 
 	/** Register hooks */
 	public static function register_hooks(): void {
-		\add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_frontend_assets' ] );
 		\add_action('init', [ __CLASS__, 'add_liff_rewrite_rule' ]);
 		\add_filter('query_vars', [ __CLASS__, 'register_liff_query_var' ]);
 		\add_filter('template_include', [ __CLASS__, 'liff_locate_template' ]);
+		\add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_script' ] );
 	}
 
 	/** Enqueue frontend assets */
-	public static function enqueue_frontend_assets(): void {
+	public static function enqueue_script(): void {
 		if (!self::is_liff()) {
 			return;
 		}
 
-		$sdk_handle = Plugin::$snake . '_liff_sdk_js';
-		\wp_enqueue_script(
-			$sdk_handle,
-			'https://static.line-scdn.net/liff/edge/2/sdk.js',
-			[ 'jquery' ],
-			Plugin::$version,
-			[
-				'in-footer' => true,
-				'strategy'  => 'async',
-			]
-		);
-
-		$handle = Plugin::$snake . '_liff_js';
-
-		\wp_enqueue_script(
-			$handle,
-			\plugin_dir_url(__FILE__) . 'liff.js',
-			[ 'jquery', Plugin::$snake . '_liff_sdk_js' ],
-			Plugin::$version,
-			[
-				'in-footer' => true,
-				'strategy'  => 'async',
-			]
-		);
-
-		Plugin::instance()->add_module_handle($sdk_handle);
-		Plugin::instance()->add_module_handle($handle);
-
-		\wp_localize_script(
-			$handle,
-			"{$handle}_data",
-			[
-				'liff_id' => SettingDTO::instance()->liff_id,
-				'api_url' => get_rest_url( null, 'power-funnel/liff' ),
-			]
-		);
+		Bootstrap::enqueue_script();
 	}
 
 	/** Add rewrite rule  */
@@ -81,13 +46,26 @@ final class Register {
 		return $vars;
 	}
 
-	/** 用戶造訪 /liff 時要套用的 template */
+	/**
+	 * 用戶造訪 /liff 時要套用的 template
+	 * 優先使用主題的 page-liff.php，若不存在則使用外掛內建的模板
+	 *
+	 * @param string $template 原始模板路徑
+	 * @return string 最終使用的模板路徑
+	 */
 	public static function liff_locate_template( string $template ): string {
 		if (self::is_liff()) {
-			// 使用主題的 page.php
-			$new_template = \locate_template('page.php');
-			if (!empty($new_template)) {
-				return $new_template;
+			Bootstrap::enqueue_script();
+			// 優先檢查主題是否有 page-liff.php（子主題 > 父主題）
+			$theme_template = \locate_template('page-liff.php');
+			if (!empty($theme_template)) {
+				return $theme_template;
+			}
+
+			// 使用外掛內建的模板
+			$plugin_template = Plugin::$dir . '/inc/templates/page-liff.php';
+			if (\file_exists($plugin_template)) {
+				return $plugin_template;
 			}
 		}
 		return $template;
