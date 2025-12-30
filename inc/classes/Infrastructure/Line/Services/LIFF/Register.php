@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace J7\PowerFunnel\Infrastructure\Line\Services\LIFF;
 
 use J7\PowerFunnel\Bootstrap;
+use J7\PowerFunnel\Contracts\DTOs\PromoLinkDTO;
+use J7\PowerFunnel\Domains\Activity\Services\ActivityService;
+use J7\PowerFunnel\Infrastructure\Line\DTOs\ProfileDTO;
+use J7\PowerFunnel\Infrastructure\Line\Services\MessageService;
 use J7\PowerFunnel\Plugin;
 
 /**
@@ -19,7 +23,7 @@ final class Register {
 		\add_action('init', [ __CLASS__, 'add_liff_rewrite_rule' ]);
 		\add_filter('query_vars', [ __CLASS__, 'register_liff_query_var' ]);
 		\add_filter('template_include', [ __CLASS__, 'liff_locate_template' ]);
-		\add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_script' ] );
+		\add_action( 'power_funnel/liff_callback', [ __CLASS__, 'send_message' ], 10, 2 );
 	}
 
 	/** Enqueue frontend assets */
@@ -74,5 +78,70 @@ final class Register {
 	/** 是否是 /liff */
 	public static function is_liff(): bool {
 		return (bool) \get_query_var(self::LIFF_QUERY_VAR);
+	}
+
+
+	/**
+	 * 發送訊息給用戶
+	 *
+	 * @param ProfileDTO   $profile 用戶資料
+	 * @param array<mixed> $url_params URL 參數
+	 * @return void
+	 */
+	public static function send_message( ProfileDTO $profile, array $url_params ): void {
+		$promo_link_id = $url_params['promoLinkId'] ?? null;
+		if ( !$promo_link_id ) {
+			return;
+		}
+		$promo_link_dto = PromoLinkDTO::of( (int) $promo_link_id );
+		$activities     = ActivityService::instance()->get_activities(
+			$promo_link_dto->to_activity_params()
+		);
+		$line_service   = new MessageService();
+
+		// 建立 Carousel 的欄位
+		$columns = [];
+
+		foreach ($activities as $activity) {
+			$columns[] = new \LINE\Clients\MessagingApi\Model\CarouselColumn(
+				[
+					'thumbnailImageUrl'    => $activity->thumbnail_url,
+					'imageBackgroundColor' => '#FFFFFF',
+					'title'                => $activity->title,
+					'text'                 => $activity->description,
+					'actions'              => [
+						new \LINE\Clients\MessagingApi\Model\PostbackAction(
+							[
+								'type'  => 'postback', // uri | postback | message
+								'label' => '立即報名',
+								'data'  => 'action=register&event_id=1',
+							]
+						),
+					],
+				]
+			);
+		}
+
+		// 建立 Carousel Template
+		$carousel_template = new \LINE\Clients\MessagingApi\Model\CarouselTemplate(
+			[
+				'type'             => 'carousel',
+				'columns'          => $columns,
+				'imageAspectRatio' => 'rectangle', // 'rectangle' 或 'square'
+				'imageSize'        => 'cover',     // 'cover' 或 'contain'
+			]
+		);
+
+		// 建立 Template Message
+		$template_message = new \LINE\Clients\MessagingApi\Model\TemplateMessage(
+			[
+				'type'     => 'template',
+				'altText'  => $promo_link_dto->get_label(),
+				'template' => $carousel_template,
+			]
+		);
+
+		// 發送訊息
+		$line_service->send_template_message( $profile->userId, $template_message );
 	}
 }

@@ -30,7 +30,7 @@ final class RegisterService {
 			'has_archive'        => true,
 			'hierarchical'       => false,
 			'menu_position'      => null,
-			'supports'           => [ 'title', 'editor', 'author', 'thumbnail', 'excerpt', 'comments' ],
+			'supports'           => [ 'title', 'custom-fields' ],
 		];
 
 		// @phpstan-ignore-next-line

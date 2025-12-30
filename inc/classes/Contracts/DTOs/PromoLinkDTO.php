@@ -63,4 +63,19 @@ final class PromoLinkDTO extends DTO {
 			\update_post_meta($this->post->ID, self::LAST_N_DAYS_META_KEY, $last_n_days);
 		}
 	}
+
+	/**
+	 * 取得標籤
+	 */
+	public function get_label(): string {
+		if (!$this->keyword && !$this->last_n_days) {
+			return '所有的活動';
+		}
+
+		if (!$this->keyword) {
+			return "最近 {$this->last_n_days} 天內的活動";
+		}
+
+		return "最近 {$this->last_n_days} 天內，標題包含「{$this->keyword}」的活動";
+	}
 }
