@@ -4,8 +4,12 @@ declare (strict_types = 1);
 
 namespace J7\PowerFunnel;
 
-use J7\PowerFunnel\Infrastructure\Youtube\Services\DataApiService;
-use J7\PowerFunnel\Utils\Base;
+use J7\PowerFunnel\Compatibility\Compatibility;
+use J7\PowerFunnel\Domains\Activity\Services\ActivityService;
+use J7\PowerFunnel\Infrastructure\Line\DTOs\SettingDTO;
+use J7\PowerFunnel\Infrastructure\Line\Services\MessageService;
+use J7\PowerFunnel\Infrastructure\Youtube\Services\YoutubeService;
+use J7\PowerFunnel\Shared\Constants\App;
 use Kucrut\Vite;
 
 
@@ -14,8 +18,15 @@ final class Bootstrap {
 
 	/** Register hooks */
 	public static function register_hooks(): void {
+		Compatibility::register_hooks();
 		Domains\Admin\Entry::register_hooks();
-		Domains\PromoLink\Services\RegisterService::register_hooks();
+		Infrastructure\Repositories\PromoLink\Register::register_hooks();
+		Infrastructure\Repositories\Registration\Register::register_hooks();
+		Infrastructure\Line\Services\Register::register_hooks();
+		YoutubeService::instance();
+		ActivityService::instance();
+		Applications\SendLine::register_hooks();
+		Applications\RegisterActivity::register_hooks();
 
 		\add_action( 'admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ] );
 
@@ -66,7 +77,7 @@ final class Bootstrap {
 
 		$env = [
 			'SITE_URL'          => \untrailingslashit( \site_url() ),
-			'API_URL'           => \untrailingslashit( \esc_url_raw( rest_url() ) ),
+			'API_URL'           => \untrailingslashit( \esc_url_raw( \rest_url() ) ),
 			'CURRENT_USER_ID'   => \get_current_user_id(),
 			'CURRENT_POST_ID'   => $post_id,
 			'PERMALINK'         => \untrailingslashit( $permalink ),
@@ -74,9 +85,11 @@ final class Bootstrap {
 			'KEBAB'             => Plugin::$kebab,
 			'SNAKE'             => Plugin::$snake,
 			'NONCE'             => \wp_create_nonce( 'wp_rest' ),
-			'APP1_SELECTOR'     => Base::APP1_SELECTOR,
-			'APP2_SELECTOR'     => Base::APP2_SELECTOR,
+			'APP1_SELECTOR'     => App::APP1_SELECTOR,
+			'APP2_SELECTOR'     => App::APP2_SELECTOR,
 			'ELEMENTOR_ENABLED' => \in_array( 'elementor/elementor.php', $active_plugins, true ), // 檢查 elementor 是否啟用
+			'LIFF_ID'           => SettingDTO::instance()->liff_id,
+			'IS_LOCAL'          => \wp_get_environment_type() === 'local',
 		];
 
 		\wp_localize_script(

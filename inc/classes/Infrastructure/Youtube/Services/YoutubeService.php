@@ -45,7 +45,7 @@ final class YoutubeService implements IActivityProvider {
 	 */
 	private function __construct() {
 		try {
-			\add_action('power_funnel/activity_providers', [ __CLASS__, 'register_provider' ]);
+			\add_filter('power_funnel/activity_providers', [ __CLASS__, 'register_provider' ]);
 			$this->init_oauth_service();
 			$this->load_token();
 			$this->handle_oauth_callback();
@@ -59,11 +59,11 @@ final class YoutubeService implements IActivityProvider {
 	/**
 	 * 註冊活動提供商
 	 *
-	 * @param array<IActivityProvider> $providers 目前的活動提供商陣列
-	 * @return array<IActivityProvider> 更新後的活動提供商陣列
+	 * @param array<string, IActivityProvider> $providers 目前的活動提供商陣列
+	 * @return array<string, IActivityProvider> 更新後的活動提供商陣列
 	 */
 	public static function register_provider( array $providers ): array {
-		$providers[] = self::instance();
+		$providers[ self::ACTIVITY_PROVIDER_ID ] = self::instance();
 		return $providers;
 	}
 

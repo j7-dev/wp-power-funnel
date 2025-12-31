@@ -9,7 +9,7 @@ final class Register {
 	/** Register hooks */
 	public static function register_hooks(): void {
 		LIFF\ApiService::register_hooks();
-		LIFF\Register::register_hooks();
+		LIFF\RegisterService::register_hooks();
 		WebhookService::register_hooks();
 	}
 }

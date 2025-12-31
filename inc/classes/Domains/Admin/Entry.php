@@ -6,7 +6,7 @@ namespace J7\PowerFunnel\Domains\Admin;
 
 use J7\PowerFunnel\Bootstrap;
 use J7\PowerFunnel\Plugin;
-use J7\PowerFunnel\Utils\Base;
+use J7\PowerFunnel\Shared\App;
 use J7\Powerhouse\Utils\Base as PowerhouseBase;
 
 /** Class Entry */
@@ -46,7 +46,7 @@ final class Entry {
 		// Output header HTML.
 		Bootstrap::enqueue_script();
 		$blog_name = \get_bloginfo('name');
-		$id        = substr(Base::APP1_SELECTOR, 1);
+		$id        = substr( App::APP1_SELECTOR, 1);
 		PowerhouseBase::render_admin_layout(
 			[
 				'title' => "Power Funnel | {$blog_name}",

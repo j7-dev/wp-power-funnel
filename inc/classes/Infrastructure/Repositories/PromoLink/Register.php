@@ -2,21 +2,21 @@
 
 declare (strict_types = 1);
 
-namespace J7\PowerFunnel\Domains\PromoLink\Services;
+namespace J7\PowerFunnel\Infrastructure\Repositories\PromoLink;
 
-/** Class RegisterService */
-final class RegisterService {
+/** Class Register */
+final class Register {
 
 
-	private const POST_TYPE = 'promo_link';
+	private const POST_TYPE = 'pf_promo_link';
 
 	/** Register hooks */
 	public static function register_hooks(): void {
-		\add_action('init', [ __CLASS__, 'register_promo_link_cpt' ]);
+		\add_action('init', [ __CLASS__, 'register_cpt' ]);
 	}
 
-	/** Register promo_link cpt */
-	public static function register_promo_link_cpt(): void {
+	/** Register cpt */
+	public static function register_cpt(): void {
 
 		$args = [
 			'labels'             => self::labels(),
@@ -75,5 +75,10 @@ final class RegisterService {
 	/** Get post_type label */
 	public static function label(): string {
 		return self::labels()['name'];
+	}
+
+	/** @return bool 是否為活動報名 post */
+	public static function match( \WP_Post $post ): bool {
+		return $post->post_type === self::POST_TYPE;
 	}
 }

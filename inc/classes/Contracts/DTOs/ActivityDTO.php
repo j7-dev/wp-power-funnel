@@ -15,11 +15,11 @@ final class ActivityDTO extends DTO {
 	/** @var string 活動 provider */
 	public string $activity_provider_id;
 
-	/** @var string 活動 title */
-	public string $title = '';
+	/** @var string 活動 title，不可為空字串，至少必須有一個空格 */
+	public string $title = ' ';
 
-	/** @var string 活動 description */
-	public string $description = '';
+	/** @var string 活動 description，不可為空字串，至少必須有一個空格 */
+	public string $description = ' ';
 
 	/** @var string 活動 縮圖 */
 	public string $thumbnail_url = '';

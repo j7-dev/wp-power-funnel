@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace J7\PowerFunnel\Infrastructure\Line\Services;
 
 use J7\PowerFunnel\Infrastructure\Line\DTOs\SettingDTO;
+use J7\PowerFunnel\Infrastructure\Line\Shared\Helpers\EventWebhookHelper;
 use J7\PowerFunnel\Plugin;
 use J7\WpUtils\Classes\ApiBase;
 use LINE\Constants\HTTPHeader;
 use LINE\Parser\EventRequestParser;
-use LINE\Webhook\Model\MessageEvent;
-use LINE\Webhook\Model\TextMessageContent;
 
 /** 負責處理 用戶與 LINE OA 互動的 Webhook 事件 */
 final class WebhookService extends ApiBase {
@@ -42,7 +41,7 @@ final class WebhookService extends ApiBase {
 	 * @throws \Exception 當處理過程中發生錯誤時拋出異常
 	 * @phpstan-ignore-next-line
 	 */
-	public function post_line_callback_callback( $request ) { // phpcs:ignore
+	public function post_line_callback_callback( \WP_REST_Request $request ):\WP_REST_Response { // phpcs:ignore
 		$setting = SettingDTO::instance();
 
 		// 若 LINE 設定未完成則回報
@@ -69,32 +68,23 @@ final class WebhookService extends ApiBase {
 		// 處理每個事件
 		foreach ( $parsed_events->getEvents() as $event ) {
 
+			$message = $event->getMessage();
+			// 記錄收到的文字訊息
+			$reply_text = $message->getText();
+
 			Plugin::logger(
 				"LINE webhook event {$event->getType()} #{$event->getWebhookEventId()}",
 				'info',
 				[
-					'event' => $event->jsonSerialize(),
+					'message'    => $message,
+					'reply_text' => $reply_text,
+					'event'      => $event->jsonSerialize(),
 				]
 				);
-			// 目前只處理訊息事件
-			if ( ! ( $event instanceof MessageEvent ) ) {
-				\do_action( 'power_funnel_line_non_message_event', $event );
-				continue;
-			}
 
-			$message = $event->getMessage();
+			$action = ( new EventWebhookHelper( $event) )->get_action();
 
-			// 目前只處理文字訊息
-			if ( ! ( $message instanceof TextMessageContent ) ) {
-				\do_action( 'power_funnel_line_non_text_message', $message, $event );
-				continue;
-			}
-
-			// 記錄收到的文字訊息
-			$reply_text = $message->getText();
-			\do_action( 'power_funnel_line_text_message_received', $reply_text, $message, $event );
-
-			// 可在此添加業務邏輯，例如使用 MessageService 回覆訊息
+			\do_action( "power_funnel/line/webhook/{$event->getType()}/{$action?->value}", $event );
 		}
 
 		return new \WP_REST_Response( [ 'status' => 'ok' ], 200 );
