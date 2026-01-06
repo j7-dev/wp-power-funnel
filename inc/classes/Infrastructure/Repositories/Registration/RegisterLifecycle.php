@@ -4,7 +4,6 @@ declare (strict_types = 1);
 
 namespace J7\PowerFunnel\Infrastructure\Repositories\Registration;
 
-use J7\PowerFunnel\Plugin;
 use J7\PowerFunnel\Shared\Enums\ERegistrationStatus;
 
 /** Lifecycle */
@@ -19,22 +18,13 @@ final class RegisterLifecycle {
 	 * 文章狀態改變時
 	 *
 	 * @param string   $new_status 新狀態
-	 * @param string   $old_status 就狀態
+	 * @param string   $old_status 舊狀態 new|pending
 	 * @param \WP_Post $post 文章物件
 	 */
-	public static function transition_registration_status( $new_status, $old_status, $post ): void {
+	public static function transition_registration_status( string $new_status, string $old_status, \WP_Post $post ): void {
 		if ( !Register::match( $post ) ) {
 			return;
 		}
-
-		Plugin::logger(
-			'transition_registration_status',
-			'info',
-			[
-				'new_status' => $new_status,
-				'old_status' => $old_status,
-			]
-			);
 
 		$status = ERegistrationStatus::tryFrom( $new_status);
 		if ($status) {
