@@ -4,6 +4,8 @@ declare (strict_types = 1);
 
 namespace J7\PowerFunnel\Infrastructure\Repositories\Registration;
 
+use J7\PowerFunnel\Shared\Enums\ERegistrationStatus;
+
 /** Class Register */
 final class Register {
 
@@ -12,6 +14,7 @@ final class Register {
 
 	/** Register hooks */
 	public static function register_hooks(): void {
+		ERegistrationStatus::register();
 		RegisterLifecycle::register_hooks();
 		\add_action('init', [ __CLASS__, 'register_cpt' ]);
 	}
