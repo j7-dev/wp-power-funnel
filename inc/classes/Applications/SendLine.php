@@ -40,7 +40,7 @@ final class SendLine {
 			return;
 		}
 
-		$line_service = new MessageService();
+		$line_service = MessageService::instance();
 
 		// 建立 Carousel 的欄位
 		$columns = [];
@@ -50,8 +50,8 @@ final class SendLine {
 				[
 					'thumbnailImageUrl'    => $activity->thumbnail_url,
 					'imageBackgroundColor' => '#FFFFFF',
-					'title'                => $activity->title,
-					'text'                 => $activity->description,
+					'title'                => $activity->title ?: ' ',
+					'text'                 => $activity->description ?: ' ',
 					'actions'              => [
 						new \LINE\Clients\MessagingApi\Model\PostbackAction($promo_link_dto->get_line_post_back_params($activity)),
 					],

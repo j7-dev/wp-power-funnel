@@ -21,6 +21,7 @@ use LINE\Clients\MessagingApi\Model\TextMessage;
  * 負責處理 LINE 訊息的發送
  */
 final class MessageService {
+	use \J7\WpUtils\Traits\SingletonTrait;
 
 
 	/**
@@ -33,11 +34,10 @@ final class MessageService {
 	/**
 	 * Constructor
 	 *
-	 * @param MessagingApiApi|null $api MessagingApiApi 實例，若為 null 則使用工廠建立
 	 * @throws \Exception 當無法建立 API 實例時拋出異常
 	 */
-	public function __construct( ?MessagingApiApi $api = null ) {
-		$this->api = $api ?? MessagingApiFactory::create();
+	public function __construct() {
+		$this->api = MessagingApiFactory::create();
 	}
 
 	/**

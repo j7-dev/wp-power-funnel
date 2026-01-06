@@ -29,5 +29,10 @@ final class RegisterActivitySuccess {
 	public static function line( $new_status, $old_status, $post ): void {
 		$registration_dto = RegistrationDTO::of( $post );
 		$activity_dto     = $registration_dto->activity;
+		$service          = MessageService::instance();
+		$service->send_text_message(
+			$registration_dto->user->id,
+			"《{$activity_dto->title}》 報名成功"
+		);
 	}
 }

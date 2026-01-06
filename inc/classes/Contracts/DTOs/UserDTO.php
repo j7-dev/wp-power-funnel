@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Contracts\DTOs;
 
+use J7\PowerFunnel\Infrastructure\Line\Services\MessageService;
+use J7\PowerFunnel\Plugin;
 use J7\PowerFunnel\Shared\Constants\App;
 use J7\PowerFunnel\Shared\Enums\EIdentityProvider;
 use J7\WpUtils\Classes\DTO;
@@ -46,8 +48,8 @@ final class UserDTO extends DTO {
 	private static function get_display_name( string $id, EIdentityProvider $identity_provider ): string {
 		switch ($identity_provider) {
 			case EIdentityProvider::LINE:
-				$profile = $messagingApi->getProfile($id);
-				return $profile->getDisplayName();
+				$service = MessageService::instance();
+				return $service->get_profile($id)->getDisplayName();
 			case EIdentityProvider::WP:
 				$user = \get_user_by('id', $id);
 				return $user ? $user->display_name : '';
@@ -63,13 +65,25 @@ final class UserDTO extends DTO {
 	 * @return string 用戶大頭照 url
 	 */
 	private static function get_user_avatar( string $id, EIdentityProvider $identity_provider ): string {
-		switch ($identity_provider) {
-			case EIdentityProvider::LINE:
-				$profile = $messagingApi->getProfile($id);
-				return $profile->getPictureUrl();
-			case EIdentityProvider::WP:
-				return \get_avatar_url($id) ?: '';
+		try {
+			switch ($identity_provider) {
+				case EIdentityProvider::LINE:
+					$service = MessageService::instance();
+					return $service->get_profile($id)->getPictureUrl();
+				case EIdentityProvider::WP:
+					return \get_avatar_url($id) ?: '';
+			}
+			return '';
+		} catch (\Throwable $e) {
+			Plugin::logger(
+				"取得用戶大頭照失敗: {$e->getMessage()}",
+				'error',
+				[
+					'id'       => $id,
+					'provider' => $identity_provider->value,
+				]
+				);
+			return '';
 		}
-		return '';
 	}
 }
