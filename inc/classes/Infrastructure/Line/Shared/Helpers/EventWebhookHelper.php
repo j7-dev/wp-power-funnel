@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace J7\PowerFunnel\Infrastructure\Line\Shared\Helpers;
 
 use J7\PowerFunnel\Contracts\Interfaces\IWebhookHelper;
+use J7\PowerFunnel\Plugin;
 use J7\PowerFunnel\Shared\Enums\EAction;
 use J7\PowerFunnel\Shared\Enums\EIdentityProvider;
 use LINE\Webhook\Model\Event;
@@ -14,8 +15,24 @@ use LINE\Webhook\Model\Event;
  */
 final class EventWebhookHelper implements IWebhookHelper {
 
-	/** @var mixed $event_data serialize 的 LINE 事件資料 */
-	private readonly mixed $event_data;
+	/** @var object{
+	 *     replyToken: string,
+	 *     postback: object{
+	 *         data: string
+	 *     },
+	 *     type: string,
+	 *     source: object{
+	 *         userId: string,
+	 *         type: string
+	 *     },
+	 *     timestamp: int,
+	 *     mode: string,
+	 *     webhookEventId: string,
+	 *     deliveryContext: object{
+	 *         isRedelivery: boolean
+	 *     }
+	 * } $event_data serialize 的 LINE 事件資料 */
+	private readonly object $event_data;
 
 	/** Constructor */
 	public function __construct( private readonly Event $event ) {
@@ -29,9 +46,10 @@ final class EventWebhookHelper implements IWebhookHelper {
 	 */
 	public function get_payload(): array {
 		try {
-			$payload_json = $this->event_data['postback']['data'];
+			$payload_json = $this->event_data->postback->data;
 			return \json_decode( $payload_json, true, 512, \JSON_THROW_ON_ERROR);
 		} catch (\Throwable $e) {
+			Plugin::logger("解析 payload 失敗 {$e->getMessage()}", 'error');
 			return [];
 		}
 	}
@@ -54,7 +72,7 @@ final class EventWebhookHelper implements IWebhookHelper {
 	/** @return string|null 從 LINE 事件上取得 LINE UUID */
 	public function get_identity_id(): string|null {
 		try {
-			return $this->event_data['source']['userId'];
+			return $this->event_data->source->userId;
 		} catch (\Throwable $e) {
 			return null;
 		}

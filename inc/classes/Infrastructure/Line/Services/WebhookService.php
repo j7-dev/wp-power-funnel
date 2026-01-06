@@ -68,19 +68,24 @@ final class WebhookService extends ApiBase {
 		// 處理每個事件
 		foreach ( $parsed_events->getEvents() as $event ) {
 
-			$message = $event->getMessage();
-			// 記錄收到的文字訊息
-			$reply_text = $message->getText();
+			if ($event instanceof \LINE\Webhook\Model\MessageEvent) {
+				$message = $event->getMessage();
 
-			Plugin::logger(
-				"LINE webhook event {$event->getType()} #{$event->getWebhookEventId()}",
-				'info',
-				[
-					'message'    => $message,
-					'reply_text' => $reply_text,
-					'event'      => $event->jsonSerialize(),
-				]
-				);
+				if ($message instanceof \LINE\Webhook\Model\TextMessageContent) {
+					// 用戶回覆的訊息
+					$reply_text = $message->getText();
+
+					Plugin::logger(
+						"LINE webhook event {$event->getType()} #{$event->getWebhookEventId()}",
+						'info',
+						[
+							'message'    => $message,
+							'reply_text' => $reply_text,
+							'event'      => $event->jsonSerialize(),
+						]
+					);
+				}
+			}
 
 			$action = ( new EventWebhookHelper( $event) )->get_action();
 
