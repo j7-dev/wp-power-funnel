@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Infrastructure\Line\Services;
 
+use GuzzleHttp\Client;
 use J7\PowerFunnel\Infrastructure\Line\DTOs\SettingDTO;
 use LINE\Clients\MessagingApi\Api\MessagingApiApi;
 use LINE\Clients\MessagingApi\Configuration;
-use GuzzleHttp\Client;
 
 /**
  * MessagingApiApi 工廠類別

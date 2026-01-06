@@ -6,7 +6,7 @@ namespace J7\PowerFunnel\Domains\Admin;
 
 use J7\PowerFunnel\Bootstrap;
 use J7\PowerFunnel\Plugin;
-use J7\PowerFunnel\Shared\App;
+use J7\PowerFunnel\Shared\Constants\App;
 use J7\Powerhouse\Utils\Base as PowerhouseBase;
 
 /** Class Entry */

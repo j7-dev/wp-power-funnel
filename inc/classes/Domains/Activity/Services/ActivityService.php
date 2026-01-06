@@ -40,7 +40,7 @@ final class ActivityService {
 		$last_n_days    = $params['last_n_days'] ?? 0;
 		$all_activities = $this->get_all_activities();
 
-		if (!$keyword && !$last_n_days) {
+		if (!$id && !$keyword && !$last_n_days) {
 			return $all_activities;
 		}
 
