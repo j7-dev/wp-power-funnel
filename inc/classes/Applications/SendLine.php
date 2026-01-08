@@ -32,7 +32,7 @@ final class SendLine {
 		if ( !$promo_link_id ) {
 			return;
 		}
-		$promo_link_dto = PromoLinkDTO::of( (int) $promo_link_id );
+		$promo_link_dto = PromoLinkDTO::of( $promo_link_id );
 		$activities     = ActivityService::instance()->get_activities(
 			$promo_link_dto->to_activity_params()
 		);

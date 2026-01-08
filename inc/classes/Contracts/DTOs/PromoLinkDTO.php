@@ -6,15 +6,15 @@ namespace J7\PowerFunnel\Contracts\DTOs;
 
 use J7\PowerFunnel\Shared\Enums\EAction;
 use J7\PowerFunnel\Shared\Enums\ELineActionType;
+use J7\PowerFunnel\Shared\Enums\ERegistrationStatus;
 use J7\WpUtils\Classes\DTO;
 
 /** 推廣連結 DTO */
 final class PromoLinkDTO extends DTO {
 
-	private const KEYWORD_META_KEY      = '_keyword';
-	private const LAST_N_DAYS_META_KEY  = '_last_n_days';
-	private const ALT_TEXT_META_KEY     = '_alt_text';
-	private const ACTION_LABEL_META_KEY = '_action_label';
+	private const KEYWORD_META_KEY     = '_keyword';
+	private const LAST_N_DAYS_META_KEY = '_last_n_days';
+	private const ALT_TEXT_META_KEY    = '_alt_text';
 
 	/** @var string 推廣連結 ID */
 	public string $id;
@@ -34,19 +34,25 @@ final class PromoLinkDTO extends DTO {
 	/** @var string LINE 訊息動作按鈕文字 */
 	public string $action_label = '立即報名';
 
+	/** @var array<string, string> 報名關聯的訊息模板 ids, ERegistrationStatus::value, $post_id */
+	public array $message_tpl_ids = [];
+
 	/**
 	 * 從文章 ID 建立 PromoLinkDTO
 	 *
-	 * @param int $post_id 文章 ID
+	 * @param string $post_id 文章 ID
 	 * @return self PromoLinkDTO 實例
 	 */
-	public static function of( int $post_id ): self {
-		$args = [
-			'id'            => (string) $post_id,
-			'link_provider' => (string) \get_post_meta($post_id, 'link_provider', true) ?: 'line',
-			'keyword'       => (string) \get_post_meta($post_id, self::KEYWORD_META_KEY, true),
-			'last_n_days'   => (int) \get_post_meta($post_id, self::LAST_N_DAYS_META_KEY, true),
-			'alt_text'      => (string) \get_post_meta($post_id, self::ALT_TEXT_META_KEY, true),
+	public static function of( string $post_id ): self {
+		$message_tpl_ids = \get_post_meta($post_id, 'message_tpl_ids', true);
+		$message_tpl_ids = \is_array($message_tpl_ids) ? $message_tpl_ids : [];
+		$args            = [
+			'id'              => $post_id,
+			'link_provider'   => (string) \get_post_meta($post_id, 'link_provider', true) ?: 'line',
+			'keyword'         => (string) \get_post_meta($post_id, self::KEYWORD_META_KEY, true),
+			'last_n_days'     => (int) \get_post_meta($post_id, self::LAST_N_DAYS_META_KEY, true),
+			'alt_text'        => (string) \get_post_meta($post_id, self::ALT_TEXT_META_KEY, true),
+			'message_tpl_ids' => $message_tpl_ids,
 		];
 		return new self($args);
 	}
@@ -101,10 +107,19 @@ final class PromoLinkDTO extends DTO {
 			'label' => $this->action_label,
 			'data'  => \wp_json_encode(
 				[
-					'action'      => EAction::REGISTER->value,
-					'activity_id' => $activity->id,
+					'action'        => EAction::REGISTER->value,
+					'activity_id'   => $activity->id,
+					'promo_link_id' => $this->id,
 				]
 			),
 		];
+	}
+
+	/** 從 PromoLinkDTO 取得特定狀態的訊息模板 ID */
+	public function get_message_tpl_id( ERegistrationStatus|string $status ): string|null {
+		if (\is_string( $status)) {
+			return $this->message_tpl_ids[ $status ] ?? null;
+		}
+		return $this->message_tpl_ids[ $status->value ] ?? null;
 	}
 }

@@ -87,4 +87,9 @@ final class EventWebhookHelper implements IWebhookHelper {
 	public function get_activity_id(): string|null {
 		return $this->get_payload()['activity_id'] ?? null;
 	}
+
+	/** @return string|null 從 LINE 事件上取得 promo link ID */
+	public function get_promo_link_id(): string|null {
+		return $this->get_payload()['promo_link_id'] ?? null;
+	}
 }

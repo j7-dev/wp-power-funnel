@@ -6,7 +6,7 @@ namespace J7\PowerFunnel\Contracts\DTOs;
 
 use J7\WpUtils\Classes\DTO;
 
-/** 通用的活動 DTO */
+/** 通用的活動 DTO，可能來自外部，不一定是 WP_Post */
 final class ActivityDTO extends DTO {
 
 	/** @var string 活動 ID */

@@ -29,7 +29,6 @@ final class Register {
 			'show_ui'            => true,
 			'show_in_menu'       => true,
 			'query_var'          => true,
-			'rewrite'            => [ 'slug' => 'Registration' ],
 			'capability_type'    => 'post',
 			'has_archive'        => true,
 			'hierarchical'       => false,
@@ -76,7 +75,7 @@ final class Register {
 		return self::POST_TYPE;
 	}
 
-	/** Get post_type label */
+	/** Get the post_type label */
 	public static function label(): string {
 		return self::labels()['name'];
 	}

@@ -12,18 +12,21 @@ use J7\PowerFunnel\Shared\Enums\EIdentityProvider;
  */
 interface IWebhookHelper {
 
-	/** 取得 webhook 上 payload */
+	/** @return array 取得 webhook 上 payload */
 	public function get_payload(): array;
 
-	/** 要執行的動作 */
+	/** @return EAction|null 要執行的動作 */
 	public function get_action(): EAction|null;
 
-	/** 取得用戶識別 ID */
+	/** @return string|null 取得用戶識別 ID */
 	public function get_identity_id(): string|null;
 
-	/** 用戶識別提供者 */
+	/** @return EIdentityProvider 用戶識別提供者 */
 	public function get_identity_provider(): EIdentityProvider;
 
-	/** 取得活動 ID */
+	/** @return string|null 取得活動 ID */
 	public function get_activity_id(): string|null;
+
+	/** @return string|null 從 LINE 事件上取得 promo link ID */
+	public function get_promo_link_id(): string|null;
 }
