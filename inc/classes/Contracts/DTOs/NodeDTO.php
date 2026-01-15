@@ -4,40 +4,42 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Contracts\DTOs;
 
-use J7\PowerFunnel\Shared\Traits\ParamsTrait;
+use _PHPStan_5adafcbb8\Nette\Neon\Exception;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\Repository;
 use J7\WpUtils\Classes\DTO;
 
 /**
- * 儲存的 Node 節點資料
+ * 儲存的 Node 節點資料，傳入節點定義內執行
  * 用戶挑選編輯完 NodeDefinitionDTO 後，儲存成 Node 節點資料
  * 多個節點 Node 組合成 Workflow
  *
  * @see https://www.figma.com/board/dB8yHondvpK2RRXEQaHqc5/Untitled?node-id=2054-345&t=Q72I2mv43LqTBKIW-1
  */
 final class NodeDTO extends DTO {
-	use ParamsTrait;
+
 
 	// region callback 調用時屬性
 
 	/** @var string Node ID */
 	public string $id;
 
+	/** @var array<string, mixed> key-value */
+	public array $params = [];
+
 	/** @var string Node ID */
 	public string $node_definition_id;
-
-	/** @var array<string, mixed> 額外的上下文，通常是用戶自己在 Node 節點內設置的參數 */
-	public array $additional_context = [];
-
-	/** @var int callback 被調用的順序 跟 add_filter 的 priority 運作機制相同，以 10 為單位 */
-	public int $priority = 10;
 
 	/** @var string|array match callback 滿足條件，才會執行 callback， */
 	public string|array $match_callback = '__return_true';
 
-	/** @var array<mixed> match_callback_params 接受的參數，會按照順序傳入 callback, 例如 [$var1, $var2, $var3...] */
+	/** @var array<string, mixed> match_callback_params 接受的參數 */
 	public array $match_callback_params = [];
 
 	// endregion callback 調用時屬性
+
+
+	/** @var ?NodeDTO $next_node 下個要執行的 node，包含用戶儲存的資料  */
+	private ?NodeDTO $next_node = null;
 
 
 
@@ -47,5 +49,72 @@ final class NodeDTO extends DTO {
 		if (!\is_array( $this->match_callback)) {
 			throw new \InvalidArgumentException('match_callback must be array');
 		}
+	}
+
+	/**
+	 * 執行當前 node
+	 * 如果不滿足條件就執行下個 node
+	 *
+	 * @return void
+	 */
+	public function try_execute( WorkflowDTO $workflow_dto ): void {
+		$index = $workflow_dto->get_index( $this->id );
+		try {
+			// 1. 檢查是否可以執行
+			if ( !$this->can_execute( $workflow_dto ) ) {
+				// 如果不符合執行條件就跳過，做下一個
+				$workflow_dto->add_result(
+				$index,
+				new WorkflowResultDTO(
+				[
+					'node_id' => $this->id,
+					'code'    => 301,
+					'message' => "workflow #{$workflow_dto->id} node #{$this->id} 不符合執行條件，跳過",
+				]
+				)
+					);
+
+				$workflow_dto->do_next();
+				return;
+			}
+
+			$definition = Repository::get_node_definition( $this->node_definition_id );
+			if (!$definition) {
+				throw new Exception("找不到 {$this->node_definition_id} 節點定義");
+			}
+
+			// 2. 執行，並添加結果
+			$result = $definition->execute($this, $workflow_dto);
+			if (!$result->is_success()) {
+				throw new Exception($result->message);
+			}
+			$workflow_dto->add_result( $index, $result);
+		} catch (\Throwable $e) {
+			// 如果這個節點執行失敗，就拋出，中斷 workflow，並標註為失敗
+			$workflow_dto->add_result(
+				$index,
+				new WorkflowResultDTO(
+					[
+						'node_id' => $this->id,
+						'code'    => 500,
+						'message' => $e->getMessage(),
+					]
+				)
+			);
+			throw $e;
+		}
+	}
+
+	/** 是否可以執行 */
+	private function can_execute( WorkflowDTO $workflow_dto ): bool {
+		if (!\is_callable( $this->match_callback )) {
+			return false;
+		}
+		return \call_user_func( $this->match_callback, $workflow_dto, $this->match_callback_params );
+	}
+
+	/** 取得參數 */
+	public function try_get_param( string $key ): mixed {
+		return $this->params[ $key ] ?? null;
 	}
 }

@@ -7,7 +7,6 @@ namespace J7\PowerFunnel;
 use J7\PowerFunnel\Compatibility\Compatibility;
 use J7\PowerFunnel\Domains\Activity\Services\ActivityService;
 use J7\PowerFunnel\Infrastructure\Line\DTOs\SettingDTO;
-use J7\PowerFunnel\Infrastructure\Line\Services\MessageService;
 use J7\PowerFunnel\Infrastructure\Youtube\Services\YoutubeService;
 use J7\PowerFunnel\Shared\Constants\App;
 use Kucrut\Vite;
@@ -26,20 +25,9 @@ final class Bootstrap {
 		YoutubeService::instance();
 		ActivityService::instance();
 		Applications\SendLine::register_hooks();
-		Applications\RegisterActivity::register_hooks();
-		Applications\RegisterActivityPending::register_hooks();
-		Applications\RegisterActivitySuccess::register_hooks();
+		Applications\RegisterActivityViaLine::register_hooks();
 
 		\add_action( 'admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ] );
-
-		// TEST ----- ▼ 測試特定 hook 記得刪除 ----- //
-		\add_action(
-			'wp_head',
-			function () {
-				DataApiService::instance();
-			}
-			);
-		// TEST ---------- END ---------- //
 	}
 
 	/**

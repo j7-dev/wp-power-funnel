@@ -9,21 +9,20 @@ use J7\PowerFunnel\Shared\Enums\ERegistrationStatus;
 /** Class Register */
 final class Register {
 
-
 	private const POST_TYPE = 'pf_registration';
 
 	/** Register hooks */
 	public static function register_hooks(): void {
 		ERegistrationStatus::register();
-		RegisterLifecycle::register_hooks();
 		\add_action('init', [ __CLASS__, 'register_cpt' ]);
+		\add_action( 'transition_post_status', [ __CLASS__, 'register_lifecycle' ], 10, 3 );
+		\add_action( 'init', [ __CLASS__, 'register_status' ] );
 	}
 
 	/** Register cpt */
 	public static function register_cpt(): void {
 
 		$args = [
-			'labels'             => self::labels(),
 			'public'             => true,
 			'publicly_queryable' => true,
 			'show_ui'            => true,
@@ -40,49 +39,47 @@ final class Register {
 		\register_post_type(self::POST_TYPE, $args);
 	}
 
-	/** @return array<string, string> Get post_type labels */
-	public static function labels(): array {
-		return [
-			'name'                  => \_x('Registration', 'Post type general name', 'power_funnel'),
-			'singular_name'         => \_x('Registration', 'Post type singular name', 'power_funnel'),
-			'menu_name'             => \_x('Registrations', 'Admin Menu text', 'power_funnel'),
-			'name_admin_bar'        => \_x('Registration', 'Add New on Toolbar', 'power_funnel'),
-			'add_new'               => \__('Add New', 'power_funnel'),
-			'add_new_item'          => \__('Add New Registration', 'power_funnel'),
-			'new_item'              => \__('New Registration', 'power_funnel'),
-			'edit_item'             => \__('Edit Registration', 'power_funnel'),
-			'view_item'             => \__('View Registration', 'power_funnel'),
-			'all_items'             => \__('All Registrations', 'power_funnel'),
-			'search_items'          => \__('Search Registrations', 'power_funnel'),
-			'parent_item_colon'     => \__('Parent Registrations:', 'power_funnel'),
-			'not_found'             => \__('No Registrations found.', 'power_funnel'),
-			'not_found_in_trash'    => \__('No Registrations found in Trash.', 'power_funnel'),
-			'featured_image'        => \_x('Registration Cover Image', 'Overrides the “Featured Image” phrase for this post type. Added in 4.3', 'power_funnel'),
-			'set_featured_image'    => \_x('Set cover image', 'Overrides the “Set featured image” phrase for this post type. Added in 4.3', 'power_funnel'),
-			'remove_featured_image' => \_x('Remove cover image', 'Overrides the “Remove featured image” phrase for this post type. Added in 4.3', 'power_funnel'),
-			'use_featured_image'    => \_x('Use as cover image', 'Overrides the “Use as featured image” phrase for this post type. Added in 4.3', 'power_funnel'),
-			'archives'              => \_x('Registration archives', 'The post type archive label used in nav menus. Default “Post Archives”. Added in 4.4', 'power_funnel'),
-			'insert_into_item'      => \_x('Insert into Registration', 'Overrides the “Insert into post”/”Insert into page” phrase (used when inserting media into a post). Added in 4.4', 'power_funnel'),
-			'uploaded_to_this_item' => \_x('Uploaded to this Registration', 'Overrides the “Uploaded to this post”/”Uploaded to this page” phrase (used when viewing media attached to a post). Added in 4.4', 'power_funnel'),
-			'filter_items_list'     => \_x('Filter Registrations list', 'Screen reader text for the filter links heading on the post type listing screen. Default “Filter posts list”/”Filter pages list”. Added in 4.4', 'power_funnel'),
-			'items_list_navigation' => \_x('Registrations list navigation', 'Screen reader text for the pagination heading on the post type listing screen. Default “Posts list navigation”/”Pages list navigation”. Added in 4.4', 'power_funnel'),
-			'items_list'            => \_x('Registrations list', 'Screen reader text for the items list heading on the post type listing screen. Default “Posts list”/”Pages list”. Added in 4.4', 'power_funnel'),
-		];
-	}
-
 	/** Get post_type */
 	public static function post_type(): string {
 		return self::POST_TYPE;
 	}
 
-	/** Get the post_type label */
-	public static function label(): string {
-		return self::labels()['name'];
-	}
-
-
 	/** @return bool 是否為活動報名 post */
 	public static function match( \WP_Post $post ): bool {
 		return $post->post_type === self::POST_TYPE;
+	}
+
+	/**
+	 * 文章狀態改變時
+	 *
+	 * @param string   $new_status 新狀態
+	 * @param string   $old_status 舊狀態 new|pending
+	 * @param \WP_Post $post 文章物件
+	 */
+	public static function register_lifecycle( string $new_status, string $old_status, \WP_Post $post ): void {
+		if ( !self::match( $post ) ) {
+			return;
+		}
+
+		$status = ERegistrationStatus::tryFrom( $new_status);
+		if ($status) {
+			\do_action("power_funnel/registration/{$status->value}", $new_status, $old_status, $post);
+		}
+
+		\do_action('power_funnel/registration/transition_status', $new_status, $old_status, $post);
+	}
+
+	/** 向 WordPress 註冊新的文章狀態 */
+	public static function register_status(): void {
+		foreach (ERegistrationStatus::cases() as $status) {
+			\register_post_status(
+				$status->value,
+				[
+					'exclude_from_search' => true,
+					'internal'            => true,
+					'public'              => false,
+				]
+			);
+		}
 	}
 }

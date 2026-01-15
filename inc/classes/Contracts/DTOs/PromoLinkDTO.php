@@ -12,10 +12,6 @@ use J7\WpUtils\Classes\DTO;
 /** 推廣連結 DTO */
 final class PromoLinkDTO extends DTO {
 
-	private const KEYWORD_META_KEY     = '_keyword';
-	private const LAST_N_DAYS_META_KEY = '_last_n_days';
-	private const ALT_TEXT_META_KEY    = '_alt_text';
-
 	/** @var string 推廣連結 ID */
 	public string $id;
 
@@ -49,9 +45,9 @@ final class PromoLinkDTO extends DTO {
 		$args            = [
 			'id'              => $post_id,
 			'link_provider'   => (string) \get_post_meta($post_id, 'link_provider', true) ?: 'line',
-			'keyword'         => (string) \get_post_meta($post_id, self::KEYWORD_META_KEY, true),
-			'last_n_days'     => (int) \get_post_meta($post_id, self::LAST_N_DAYS_META_KEY, true),
-			'alt_text'        => (string) \get_post_meta($post_id, self::ALT_TEXT_META_KEY, true),
+			'keyword'         => (string) \get_post_meta( $post_id, 'keyword', true),
+			'last_n_days'     => (int) \get_post_meta( $post_id, 'last_n_days', true),
+			'alt_text'        => (string) \get_post_meta( $post_id, 'alt_text', true),
 			'message_tpl_ids' => $message_tpl_ids,
 		];
 		return new self($args);

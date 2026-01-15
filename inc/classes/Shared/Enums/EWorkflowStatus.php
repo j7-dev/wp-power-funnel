@@ -6,25 +6,16 @@ namespace J7\PowerFunnel\Shared\Enums;
 
 enum EWorkflowStatus : string {
 
-	case PUBLISH = 'publish';
-	case DRAFT   = 'draft';
-	case TRASH   = 'trash';
+	case RUNNING   = 'running';
+	case COMPLETED = 'completed';
+	case FAILED    = 'failed';
 
 	/** 標籤 */
 	public function label(): string {
 		return match ( $this ) {
-			self::PUBLISH => '發布',
-			self::DRAFT => '草稿',
-			self::TRASH => '已刪除',
-		};
-	}
-
-	/** 顏色 */
-	public function color(): string {
-		return match ( $this ) {
-			self::PUBLISH => 'blue',
-			self::DRAFT => 'orange',
-			self::TRASH => 'red',
+			self::RUNNING => '進行中',
+			self::COMPLETED => '已完成',
+			self::FAILED => '失敗',
 		};
 	}
 }

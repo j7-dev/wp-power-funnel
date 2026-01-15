@@ -39,8 +39,8 @@ final class Repository {
 
 		if (EIdentityProvider::WP === $identity_provider) {
 			$args['author']     = $identity_id;
-			$args['meta_key']   ='activity_id';
-			$args['meta_value'] =$activity_id;
+			$args['meta_key']   = 'activity_id';
+			$args['meta_value'] = $activity_id;
 		} else {
 			$args['meta_query'] = [
 				'relation'           => 'AND',

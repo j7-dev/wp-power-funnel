@@ -5,27 +5,27 @@ declare ( strict_types = 1 );
 namespace J7\PowerFunnel\Infrastructure\Repositories\Workflow;
 
 use J7\PowerFunnel\Contracts\DTOs\WorkflowDTO;
-use J7\PowerFunnel\Infrastructure\Repositories\Workflow\NodeDefinitions\EmailNode;
+use J7\PowerFunnel\Shared\Enums\EWorkflowStatus;
 
 /** Class Register */
 final class Register {
-
 
 	private const POST_TYPE = 'pf_workflow';
 
 	/** Register hooks */
 	public static function register_hooks(): void {
 		\add_action( 'init', [ __CLASS__, 'register_cpt' ] );
-		\add_action( 'init', [ __CLASS__, 'register_workflows' ] );
-		\add_action( 'init', [ __CLASS__, 'register_default_hook_names' ] );
-		\add_filter('power_funnel/workflow/node_definitions', [ __CLASS__, 'register_default_node_definitions' ]);
+		\add_action( 'transition_post_status', [ __CLASS__, 'register_lifecycle' ], 10, 3 );
+		\add_action( 'init', [ __CLASS__, 'register_status' ] );
+
+		$status = EWorkflowStatus::RUNNING;
+		\add_action("power_funnel/workflow/{$status->value}", [ __CLASS__, 'start_workflow' ]);
 	}
 
 	/** Register cpt */
 	public static function register_cpt(): void {
 
 		$args = [
-			'labels'             => self::labels(),
 			'public'             => true,
 			'publicly_queryable' => true,
 			'show_ui'            => true,
@@ -42,109 +42,57 @@ final class Register {
 		\register_post_type( self::POST_TYPE, $args );
 	}
 
-	/** @return array<string, string> Get post_type labels */
-	public static function labels(): array {
-		return [
-			'name'                  => \_x( 'Workflow', 'Post type general name', 'power_funnel' ),
-			'singular_name'         => \_x( 'Workflow', 'Post type singular name', 'power_funnel' ),
-			'menu_name'             => \_x( 'Workflows', 'Admin Menu text', 'power_funnel' ),
-			'name_admin_bar'        => \_x( 'Workflow', 'Add New on Toolbar', 'power_funnel' ),
-			'add_new'               => \__( 'Add New', 'power_funnel' ),
-			'add_new_item'          => \__( 'Add New Workflow', 'power_funnel' ),
-			'new_item'              => \__( 'New Workflow', 'power_funnel' ),
-			'edit_item'             => \__( 'Edit Workflow', 'power_funnel' ),
-			'view_item'             => \__( 'View Workflow', 'power_funnel' ),
-			'all_items'             => \__( 'All Workflows', 'power_funnel' ),
-			'search_items'          => \__( 'Search Workflows', 'power_funnel' ),
-			'parent_item_colon'     => \__( 'Parent Workflows:', 'power_funnel' ),
-			'not_found'             => \__( 'No Workflows found.', 'power_funnel' ),
-			'not_found_in_trash'    => \__( 'No Workflows found in Trash.', 'power_funnel' ),
-			'featured_image'        => \_x(
-				'Workflow Cover Image',
-				'Overrides the “Featured Image” phrase for this post type. Added in 4.3',
-				'power_funnel'
-			),
-			'set_featured_image'    => \_x(
-				'Set cover image',
-				'Overrides the “Set featured image” phrase for this post type. Added in 4.3',
-				'power_funnel'
-			),
-			'remove_featured_image' => \_x(
-				'Remove cover image',
-				'Overrides the “Remove featured image” phrase for this post type. Added in 4.3',
-				'power_funnel'
-			),
-			'use_featured_image'    => \_x(
-				'Use as cover image',
-				'Overrides the “Use as featured image” phrase for this post type. Added in 4.3',
-				'power_funnel'
-			),
-			'archives'              => \_x(
-				'Workflow archives',
-				'The post type archive label used in nav menus. Default “Post Archives”. Added in 4.4',
-				'power_funnel'
-			),
-			'insert_into_item'      => \_x(
-				'Insert into Workflow',
-				'Overrides the “Insert into post”/”Insert into page” phrase (used when inserting media into a post). Added in 4.4',
-				'power_funnel'
-			),
-			'uploaded_to_this_item' => \_x(
-				'Uploaded to this Workflow',
-				'Overrides the “Uploaded to this post”/”Uploaded to this page” phrase (used when viewing media attached to a post). Added in 4.4',
-				'power_funnel'
-			),
-			'filter_items_list'     => \_x(
-				'Filter Workflows list',
-				'Screen reader text for the filter links heading on the post type listing screen. Default “Filter posts list”/”Filter pages list”. Added in 4.4',
-				'power_funnel'
-			),
-			'items_list_navigation' => \_x(
-				'Workflows list navigation',
-				'Screen reader text for the pagination heading on the post type listing screen. Default “Posts list navigation”/”Pages list navigation”. Added in 4.4',
-				'power_funnel'
-			),
-			'items_list'            => \_x(
-				'Workflows list',
-				'Screen reader text for the items list heading on the post type listing screen. Default “Posts list”/”Pages list”. Added in 4.4',
-				'power_funnel'
-			),
-		];
-	}
-
 	/** Get post_type */
 	public static function post_type(): string {
 		return self::POST_TYPE;
 	}
-
-	/** Get the post_type label */
-	public static function label(): string {
-		return self::labels()['name'];
-	}
-
 
 	/** @return bool 是否為活動報名 post */
 	public static function match( \WP_Post $post ): bool {
 		return $post->post_type === self::POST_TYPE;
 	}
 
-	/** 註冊所有已發布的 Workflow */
-	public static function register_workflow(): void {
-		/** @var array<WorkflowDTO> $workflows */
-		$workflows = Repository::get_publish_workflows();
-		foreach ($workflows as $workflow) {
-			$workflow->register();
+	/**
+	 * 文章狀態改變時
+	 *
+	 * @param string   $new_status 新狀態
+	 * @param string   $old_status 舊狀態 new|running
+	 * @param \WP_Post $post 文章物件
+	 */
+	public static function register_lifecycle( string $new_status, string $old_status, \WP_Post $post ): void {
+		if ( !self::match( $post ) ) {
+			return;
+		}
+
+		$status = EWorkflowStatus::tryFrom( $new_status);
+		if ($status) {
+			\do_action("power_funnel/workflow/{$status->value}", (string) $post->ID);
+		}
+
+		\do_action('power_funnel/workflow/transition_status', (string) $post->ID);
+	}
+
+	/** 向 WordPress 註冊新的文章狀態 */
+	public static function register_status(): void {
+		foreach (EWorkflowStatus::cases() as $status) {
+			\register_post_status(
+				$status->value,
+				[
+					'exclude_from_search' => true,
+					'internal'            => true,
+					'public'              => false,
+				]
+			);
 		}
 	}
 
-	/** 註冊預設的 node definitions */
-	public static function register_default_node_definitions( array $node_definitions ): array {
-		$definitions = [
-			new EmailNode(),
-		];
-		foreach ($definitions as $definition) {
-			$node_definitions[ $definition->id ] = $definition;
-		}
-		return $node_definitions;
+	/**
+	 * 開始執行 Workflow
+	 *
+	 * @param string $workflow_id 工作流 id
+	 */
+	public function start_workflow( string $workflow_id ): void {
+		$workflow_dto = WorkflowDTO::of( $workflow_id );
+		$workflow_dto->try_execute();
 	}
 }

@@ -7,7 +7,6 @@ namespace J7\PowerFunnel\Infrastructure\Youtube\DTOs;
 use J7\WpUtils\Classes\DTO;
 
 /** Setting DTO 取得設定 */
-/** TODO 移除預設的 資料 */
 final class SettingDTO extends DTO {
 
 	/** @var string 儲存在 options table 的 option name */
@@ -24,8 +23,6 @@ final class SettingDTO extends DTO {
 
 	/** @var string Redirect Uri */
 	public string $redirectUri = '';
-
-
 
 
 	/** 取得實例 */
