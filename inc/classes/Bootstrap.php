@@ -66,20 +66,25 @@ final class Bootstrap {
 		$active_plugins = \get_option( 'active_plugins', [] );
 
 		$env = [
-			'SITE_URL'          => \untrailingslashit( \site_url() ),
-			'API_URL'           => \untrailingslashit( \esc_url_raw( \rest_url() ) ),
-			'CURRENT_USER_ID'   => \get_current_user_id(),
-			'CURRENT_POST_ID'   => $post_id,
-			'PERMALINK'         => \untrailingslashit( $permalink ),
-			'APP_NAME'          => Plugin::$app_name,
-			'KEBAB'             => Plugin::$kebab,
-			'SNAKE'             => Plugin::$snake,
-			'NONCE'             => \wp_create_nonce( 'wp_rest' ),
-			'APP1_SELECTOR'     => App::APP1_SELECTOR,
-			'APP2_SELECTOR'     => App::APP2_SELECTOR,
-			'ELEMENTOR_ENABLED' => \in_array( 'elementor/elementor.php', $active_plugins, true ), // 檢查 elementor 是否啟用
-			'LIFF_ID'           => SettingDTO::instance()->liff_id,
-			'IS_LOCAL'          => \wp_get_environment_type() === 'local',
+			'SITE_URL'                => \untrailingslashit( \site_url() ),
+			'API_URL'                 => \untrailingslashit( \esc_url_raw( \rest_url() ) ),
+			'CURRENT_USER_ID'         => \get_current_user_id(),
+			'CURRENT_POST_ID'         => $post_id,
+			'PERMALINK'               => \untrailingslashit( $permalink ),
+			'APP_NAME'                => Plugin::$app_name,
+			'KEBAB'                   => Plugin::$kebab,
+			'SNAKE'                   => Plugin::$snake,
+			'NONCE'                   => \wp_create_nonce( 'wp_rest' ),
+			'APP1_SELECTOR'           => App::APP1_SELECTOR,
+			'APP2_SELECTOR'           => App::APP2_SELECTOR,
+			'ELEMENTOR_ENABLED'       => \in_array( 'elementor/elementor.php', $active_plugins, true ), // 檢查 elementor 是否啟用
+			'LIFF_ID'                 => SettingDTO::instance()->liff_id,
+			'IS_LOCAL'                => \wp_get_environment_type() === 'local',
+			'PROMO_LINK_POST_TYPE'    => Infrastructure\Repositories\PromoLink\Register::post_type(),
+			'REGISTRATION_POST_TYPE'  => Infrastructure\Repositories\Registration\Register::post_type(),
+			'WORKFLOW_POST_TYPE'      => Infrastructure\Repositories\Workflow\Register::post_type(),
+			'WORKFLOW_RULE_POST_TYPE' => Infrastructure\Repositories\WorkflowRule\Register::post_type(),
+
 		];
 
 		\wp_localize_script(

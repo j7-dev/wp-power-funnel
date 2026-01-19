@@ -5,6 +5,10 @@ import { saveLiffUserInfo, IS_LOCAL } from '@/utils'
 import liff from "@line/liff/core";
 import {useState, useEffect} from 'react'
 
+/**
+ * LIFF APP 看到的 loading 畫面
+ * @constructor
+ */
 function App() {
 
     const [isLoading, setIsLoading] = useState(true)

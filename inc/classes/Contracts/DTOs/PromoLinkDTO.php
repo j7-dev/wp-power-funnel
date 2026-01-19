@@ -15,6 +15,9 @@ final class PromoLinkDTO extends DTO {
 	/** @var string 推廣連結 ID */
 	public string $id;
 
+	/** @var string 推廣連結名稱 */
+	public string $name;
+
 	/** @var string 推廣連結提供商 */
 	public string $link_provider = 'line';
 
@@ -30,7 +33,7 @@ final class PromoLinkDTO extends DTO {
 	/** @var string LINE 訊息動作按鈕文字 */
 	public string $action_label = '立即報名';
 
-	/** @var array<string, string> 報名關聯的訊息模板 ids, ERegistrationStatus::value, $post_id */
+	/** @var array<string, string> 報名關聯的訊息模板 ids, ERegistrationStatus::value, $post_id TODO 用戶自己用工作流程定義? */
 	public array $message_tpl_ids = [];
 
 	/**
@@ -44,6 +47,7 @@ final class PromoLinkDTO extends DTO {
 		$message_tpl_ids = \is_array($message_tpl_ids) ? $message_tpl_ids : [];
 		$args            = [
 			'id'              => $post_id,
+			'name'            => (string) \get_the_title($post_id),
 			'link_provider'   => (string) \get_post_meta($post_id, 'link_provider', true) ?: 'line',
 			'keyword'         => (string) \get_post_meta( $post_id, 'keyword', true),
 			'last_n_days'     => (int) \get_post_meta( $post_id, 'last_n_days', true),

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-
+import {TEnv} from '@/utils'
 
 const APP_DOMAIN = 'power_funnel_data' as string
 
-const env = window?.[APP_DOMAIN]?.env
+export const env:TEnv = window?.[APP_DOMAIN]?.env
 
 export const SITE_URL = env?.SITE_URL
 export const API_URL = env?.API_URL || '/wp-json'
@@ -22,3 +22,7 @@ export const ELEMENTOR_ENABLED = env?.ELEMENTOR_ENABLED || false
 export const LIFF_ID = env?.LIFF_ID || ""
 export const IS_LOCAL = env?.IS_LOCAL || ""
 
+export const PROMO_LINK_POST_TYPE = env?.PROMO_LINK_POST_TYPE || 'pf_promo_link'
+export const REGISTRATION_POST_TYPE = env?.REGISTRATION_POST_TYPE || 'pf_registration'
+export const WORKFLOW_POST_TYPE = env?.WORKFLOW_POST_TYPE || 'pf_workflow'
+export const WORKFLOW_RULE_POST_TYPE = env?.WORKFLOW_RULE_POST_TYPE || 'pf_workflow_rule'
