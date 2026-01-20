@@ -32,4 +32,13 @@ final class SettingDTO extends DTO {
 		$args['redirectUri'] = \site_url();
 		return new self($args);
 	}
+
+	/**
+	 * 儲存設定
+	 *
+	 * @return bool 是否儲存成功
+	 */
+	public function save(): bool {
+		return \update_option(self::OPTION_NAME, $this->to_array());
+	}
 }

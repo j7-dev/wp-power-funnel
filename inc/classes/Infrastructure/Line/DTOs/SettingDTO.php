@@ -39,21 +39,16 @@ final class SettingDTO extends DTO {
 	 */
 	public string $channel_secret = '';
 
-	/**
-	 * LIFF ID
-	 */
+	/** LIFF ID */
 	public string $liff_id = '';
 
-	/**
-	 * 取得實例
-	 *
-	 * @return self
-	 */
+	/**  @return self 取得實例 */
 	public static function instance(): self {
 		$args = \get_option(self::OPTION_NAME, []);
 		$args = \is_array($args) ? $args : [];
 		return new self($args);
 	}
+
 
 	/**
 	 * 驗證設定是否完整
