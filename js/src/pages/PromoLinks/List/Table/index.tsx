@@ -75,7 +75,9 @@ const Main = () => {
 						...tableProps.pagination,
 						...getDefaultPaginationProps({ label: '連結' }),
 					}}
-					rowSelection={rowSelection}
+					rowSelection={
+						rowSelection as TableProps<TPromoLinkRecord>['rowSelection']
+					}
 					columns={columns}
 					rowKey={(record: TPromoLinkRecord) => record.id.toString()}
 				/>

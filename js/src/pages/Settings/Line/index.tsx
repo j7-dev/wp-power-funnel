@@ -100,7 +100,7 @@ const index = () => {
 				<Heading className="mt-8">Line Api 設定</Heading>
 				{LINE_FIELDS.map(({ name, label }) => (
 					<Item key={name} name={['line', name]} label={label}>
-						<Input allowClear />
+						<Input.Password allowClear />
 					</Item>
 				))}
 			</div>

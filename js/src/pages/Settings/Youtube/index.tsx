@@ -10,18 +10,41 @@ const { Item } = Form
 
 const youtubeFields: FormItemProps[] = [
 	{
-		name: 'channelId',
-		label: 'Channel Id',
-	},
-	{
 		name: 'clientId',
-		label: 'Client Id',
+		label: '用戶端 ID ( Client Id )',
 	},
 	{
 		name: 'clientSecret',
-		label: 'Client Secret',
+		label: '用戶端密碼 ( Client Secret )',
 	},
 ]
+
+const TUTORIALS: React.ReactNode[][] = [
+	[
+		<>
+			前往{' '}
+			<a href="https://console.cloud.google.com/" target="_blank">
+				Google Cloud Console
+			</a>
+		</>,
+	],
+	['新增專案'],
+	['選取剛剛新增的專案，並且搜尋選取 「YouTube Data API v3」'],
+	['啟用 「YouTube Data API v3」'],
+	['前往品牌，建立 Google OAuth 同意畫面'],
+	['建立憑證，選擇 「OAuth 用戶端 ID」'],
+	['填寫基本資料，並選擇「外部」'],
+	['輸入你的網站網域(不含 https)以及基本資料'],
+	['前往用戶端，建立用戶端'],
+	['選擇「網頁應用程式」'],
+	[`設定授權後導向網址  ${SITE_URL}`],
+	['複製 「用戶端 ID」 「用戶端密碼」'],
+]
+
+const HEADINGS = {
+	1: '創建 Google Cloud Console 專案',
+	6: '創建 OAuth 用戶端憑證',
+}
 
 const index = () => {
 	const form = Form.useFormInstance()
@@ -84,23 +107,32 @@ const index = () => {
 				<Heading className="mt-8">Youtube 設定</Heading>
 				{youtubeFields.map(({ name, label }) => (
 					<Item key={name} name={['youtube', name]} label={label}>
-						<Input allowClear disabled={isAuthorized} />
+						<Input.Password allowClear disabled={isAuthorized} />
 					</Item>
 				))}
 			</div>
-			<div className="flex-1 h-auto md:h-[calc(100%-5.375rem)] md:overflow-y-auto">
-				<Heading className="mt-8">創建 Line Login 並新增 Liff APP</Heading>
-				<p>
-					1. 前往{' '}
-					<a href="https://developers.line.biz/console/" target="_blank">
-						Line Console
-					</a>{' '}
-					創建 Provider
-				</p>
-				<SimpleImage
-					src={`${SITE_URL}/wp-content/plugins/power-`}
-					ratio="aspect-[2.1]"
-				/>
+			<div className="flex-1 md:h-[calc(100vh-8rem)] md:overflow-y-auto">
+				{TUTORIALS.map((items, index) => {
+					const order = index + 1
+					// @ts-ignore
+					const heading: string | undefined = HEADINGS[order] || undefined
+					return (
+						<>
+							{heading && <Heading className="mt-8">{heading}</Heading>}
+							{items.map((item, i) => (
+								<p>
+									{i === 0 && `${order}. `}
+									{item}
+								</p>
+							))}
+							<SimpleImage
+								src={`${SITE_URL}/wp-content/plugins/power-funnel/inc/assets/youtube/${String(order).padStart(2, '0')}.jpg`}
+								ratio="aspect-[2.1]"
+								className="mb-8"
+							/>
+						</>
+					)
+				})}
 			</div>
 		</div>
 	)

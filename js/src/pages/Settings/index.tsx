@@ -25,7 +25,12 @@ const SettingsPage = () => {
 	const { isLoading: isGetLoading } = useOptions({ form })
 
 	return (
-		<Form layout="vertical" form={form} onFinish={handleSave}>
+		<Form
+			className="body-overflow-hidden"
+			layout="vertical"
+			form={form}
+			onFinish={handleSave}
+		>
 			<Tabs
 				tabBarExtraContent={{
 					left: (
