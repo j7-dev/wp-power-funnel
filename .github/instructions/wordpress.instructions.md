@@ -1089,3 +1089,66 @@ wp user list --role=administrator
 10. **效能優化**：適當使用快取和 lazy loading
 
 您將協助開發者建構高品質的 WordPress 應用程式，確保程式碼安全、高效能、易於維護，並遵循 WordPress 最佳實踐和開發標準。
+
+---
+
+## Power Funnel 專案特定規範
+
+### DDD 架構層次
+本專案採用 DDD（領域驅動設計）架構，必須嚴格遵守以下層次邊界：
+
+| 層次 | 路徑 | 職責 |
+|------|------|------|
+| Applications | `inc/classes/Applications/` | 應用服務、REST API 端點 |
+| Domains | `inc/classes/Domains/` | 業務邏輯、領域服務 |
+| Infrastructure | `inc/classes/Infrastructure/` | 外部整合 (LINE/YouTube)、Repository CRUD |
+| Contracts | `inc/classes/Contracts/DTOs/` | 資料傳輸物件 (DTO) |
+| Shared | `inc/classes/Shared/` | 跨層共用：常數、Enum |
+
+**禁止**：Infrastructure 直接呼叫 Applications；Shared 引用其他層。
+
+### 新增節點定義 (NodeDefinition)
+繼承 `BaseNodeDefinition`，放在 `Infrastructure\Repositories\WorkflowRule\NodeDefinitions\`，並在 `WorkflowRule\Register::register_default_node_definitions` 中注入：
+
+```php
+final class MyNode extends BaseNodeDefinition {
+    public string $id = 'my_node';
+    public string $name = '我的節點';
+    public ENodeType $type = ENodeType::ACTION;
+
+    public function execute( NodeDTO $node, WorkflowDTO $workflow ): WorkflowResultDTO {
+        // 執行邏輯...
+        $workflow->do_next(); // 必須呼叫，繼續下個節點
+        return new WorkflowResultDTO(['node_id' => $node->id, 'code' => 200, 'message' => '成功']);
+    }
+}
+```
+
+### 新增觸發點 (TriggerPoint)
+在 `ETriggerPoint` enum 新增 case，並用 `do_action` 在適當時機觸發：
+
+```php
+// ETriggerPoint.php
+case MY_TRIGGER = self::PREFIX . 'my_trigger';
+
+// 觸發時傳入 CallableDTO
+\do_action(ETriggerPoint::MY_TRIGGER->value, $context_callable_dto);
+```
+
+### CPT Post Types
+| 常數 | Post Type | 用途 |
+|------|-----------|------|
+| `WORKFLOW_RULE_POST_TYPE` | `pf_workflow_rule` | 工作流規則模板 |
+| `WORKFLOW_POST_TYPE` | `pf_workflow` | 工作流執行實例 |
+| `PROMO_LINK_POST_TYPE` | `pf_promo_link` | 推廣連結 |
+| `REGISTRATION_POST_TYPE` | `pf_registration` | 活動報名 |
+
+### Hook 命名慣例
+```
+power_funnel/workflow/{status}       # 工作流狀態變更
+power_funnel/workflow/transition_status  # 任何狀態變更
+power_funnel/workflow_rule/node_definitions  # filter: 注入節點定義
+power_funnel/workflow_rule/trigger_points    # filter: 注入觸發點
+pf/trigger/{trigger_name}           # 觸發工作流的 action
+power_funnel/liff_callback          # LINE LIFF 回調
+```
