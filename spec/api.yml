@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: Power Funnel REST API
+  description: |
+    Power Funnel WordPress 外掛 REST API。
+    自動抓取 YouTube 直播場次，讓用戶可以透過 LINE 報名活動；並提供工作流引擎。
+
+    ## 錯誤碼對應規則
+    - **400** = 前置（參數）Rules 驗證失敗
+    - **403** = 前置（狀態）Rules 不符
+    - **404** = 資源找不到
+    - **500** = 伺服器內部錯誤
+
+    ## 認證
+    管理端 API（options、revoke-google-oauth、activities）需要 WordPress 登入 Cookie 加上 `X-WP-Nonce` Header。
+    公開端 API（liff、line-callback）使用各自的驗證機制（LINE 簽章等）。
+  version: "0.0.1"
+
+servers:
+  - url: /wp-json/power-funnel
+
+tags:
+  - name: Activity
+    description: 活動管理
+  - name: Options
+    description: 系統設定
+  - name: LINE
+    description: LINE 整合
+
+components:
+  securitySchemes:
+    wpNonce:
+      type: apiKey
+      in: header
+      name: X-WP-Nonce
+
+  schemas:
+    ActivityDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 活動 ID（YouTube video ID）
+        activity_provider_id:
+          type: string
+          description: 活動提供商 ID
+          example: youtube
+        title:
+          type: string
+          description: 活動標題
+        description:
+          type: string
+          description: 活動描述
+        thumbnail_url:
+          type: string
+          format: uri
+          description: 縮圖 URL
+        scheduled_start_time:
+          type: integer
+          description: 排程開始時間（Unix timestamp）
+        meta:
+          type: object
+          description: 額外中繼資料
+
+    LineSettingDTO:
+      type: object
+      properties:
+        liff_id:
+          type: string
+          description: LIFF ID
+        liff_url:
+          type: string
+          description: LIFF URL
+        channel_id:
+          type: string
+          description: LINE Channel ID
+        channel_secret:
+          type: string
+          description: LINE Channel Secret
+        channel_access_token:
+          type: string
+          description: LINE Channel Access Token
+
+    YoutubeSettingDTO:
+      type: object
+      properties:
+        clientId:
+          type: string
+          description: Google OAuth Client ID
+        clientSecret:
+          type: string
+          description: Google OAuth Client Secret
+        redirectUri:
+          type: string
+          format: uri
+          description: OAuth Redirect URI
+
+    GoogleOAuthStatus:
+      type: object
+      properties:
+        isAuthorized:
+          type: boolean
+          description: 是否已授權
+        authUrl:
+          type: string
+          format: uri
+          description: Google OAuth 授權 URL
+
+    OptionsResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: get_options_success
+        message:
+          type: string
+          example: 取得設定成功
+        data:
+          type: object
+          properties:
+            line:
+              $ref: "#/components/schemas/LineSettingDTO"
+            youtube:
+              $ref: "#/components/schemas/YoutubeSettingDTO"
+            googleOauth:
+              $ref: "#/components/schemas/GoogleOAuthStatus"
+
+    SaveOptionsResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: save_options_success
+        message:
+          type: string
+          example: 儲存成功
+        data:
+          nullable: true
+
+    RevokeGoogleOAuthResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: revoke_google_oauth_success
+        message:
+          type: string
+          example: 撤銷 Google OAuth 成功
+        data:
+          nullable: true
+
+    LiffRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: LINE 用戶 ID
+        name:
+          type: string
+          description: LINE 用戶名稱
+        picture:
+          type: string
+          nullable: true
+          description: 用戶圖片 URL
+        os:
+          type: string
+          nullable: true
+          description: 裝置作業系統
+        version:
+          type: string
+          nullable: true
+          description: LIFF SDK 版本
+        lineVersion:
+          type: string
+          nullable: true
+          description: LINE 應用版本
+        isInClient:
+          type: boolean
+          description: 是否在 LINE 內建瀏覽器
+        isLoggedIn:
+          type: boolean
+          description: 是否已登入 LINE
+        urlParams:
+          type: object
+          properties:
+            promoLinkId:
+              type: string
+              description: 推廣連結 ID
+          description: LIFF URL 參數
+
+    LiffResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: success
+        message:
+          type: string
+          example: get liff data success
+        data:
+          nullable: true
+
+    LineWebhookResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+paths:
+  /activities:
+    get:
+      tags: [Activity]
+      summary: 查詢活動列表
+      operationId: GetActivities
+      security:
+        - wpNonce: []
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          description: 指定活動 ID
+        - name: keyword
+          in: query
+          schema:
+            type: string
+          description: 標題關鍵字篩選
+        - name: last_n_days
+          in: query
+          schema:
+            type: integer
+          description: 篩選未來 N 天內的活動
+      responses:
+        "200":
+          description: 成功回傳活動列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityDTO"
+
+  /options:
+    get:
+      tags: [Options]
+      summary: 查詢設定
+      operationId: GetOptions
+      security:
+        - wpNonce: []
+      responses:
+        "200":
+          description: 成功回傳設定
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptionsResponse"
+
+    post:
+      tags: [Options]
+      summary: 儲存設定
+      operationId: SaveOptions
+      security:
+        - wpNonce: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                line:
+                  $ref: "#/components/schemas/LineSettingDTO"
+                youtube:
+                  $ref: "#/components/schemas/YoutubeSettingDTO"
+      responses:
+        "200":
+          description: 儲存成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveOptionsResponse"
+
+  /revoke-google-oauth:
+    post:
+      tags: [Options]
+      summary: 撤銷 Google OAuth 授權
+      operationId: RevokeGoogleOAuth
+      security:
+        - wpNonce: []
+      responses:
+        "200":
+          description: 撤銷成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeGoogleOAuthResponse"
+
+  /liff:
+    post:
+      tags: [LINE]
+      summary: 處理 LIFF 回調
+      operationId: HandleLiffCallback
+      description: |
+        接收 LIFF App 傳送的用戶 Profile 資料與 URL 參數。
+        不需要 WordPress 登入驗證（permission_callback = __return_true）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiffRequest"
+      responses:
+        "200":
+          description: 處理成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiffResponse"
+
+  /line-callback:
+    post:
+      tags: [LINE]
+      summary: 處理 LINE Webhook
+      operationId: HandleLineWebhook
+      description: |
+        接收 LINE Platform 發送的 Webhook 事件。
+        使用 X-Line-Signature 驗證簽章，不需要 WordPress 登入驗證。
+      parameters:
+        - name: X-Line-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: LINE 簽章
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: LINE Webhook Event 物件
+      responses:
+        "200":
+          description: 處理成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineWebhookResponse"
+        "500":
+          description: LINE 設定未完成或簽章驗證失敗

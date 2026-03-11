@@ -1,0 +1,167 @@
+// Power Funnel — Entity Relationship Model
+// Version: 0.0.1 | Date: 2026-03-11
+//
+// 本專案使用 WordPress CPT (Custom Post Type) 與 wp_options 作為資料儲存，
+// 不使用自訂 DB table。以下以 DBML 語法描述邏輯結構。
+
+// ===================== Enums =====================
+
+Enum identity_provider {
+  line       [note: 'LINE 用戶']
+  WordPress  [note: 'WordPress 用戶']
+}
+
+Enum registration_status {
+  pending   [note: '待審核']
+  success   [note: '成功']
+  rejected  [note: '拒絕']
+  failed    [note: '失敗']
+  cancelled [note: '已取消']
+}
+
+Enum workflow_rule_status {
+  publish [note: '已發布']
+  draft   [note: '草稿']
+  trash   [note: '已刪除']
+}
+
+Enum workflow_status {
+  running   [note: '進行中']
+  completed [note: '已完成']
+  failed    [note: '失敗']
+}
+
+Enum node_type {
+  send_message [note: '發送訊息類（Email, LINE, SMS, Webhook）']
+  action       [note: '動作類（Wait, Branch, Tag）']
+}
+
+Enum activity_provider {
+  youtube [note: 'YouTube Data API']
+}
+
+// ===================== Tables (CPT) =====================
+
+Table pf_promo_link {
+  ID             bigint  [pk, note: 'WordPress post ID']
+  post_title     varchar [note: '推廣連結名稱']
+  post_status    varchar [note: 'publish / draft / trash']
+  post_type      varchar [note: 'pf_promo_link', default: 'pf_promo_link']
+
+  // post_meta
+  link_provider  varchar [note: '連結提供商，預設 line']
+  keyword        varchar [note: '篩選活動標題關鍵字']
+  last_n_days    int     [note: '篩選未來 N 天內的活動']
+  alt_text       varchar [note: 'LINE Carousel 替代文字']
+  action_label   varchar [note: 'LINE 動作按鈕文字，預設「立即報名」']
+  message_tpl_ids text   [note: 'JSON: {status: message_template_post_id}']
+
+  Note: '''
+  推廣連結 CPT。管理員建立推廣連結，綁定活動篩選條件。
+  用戶透過 LIFF App 打開推廣連結時，系統發送 LINE Carousel 活動列表。
+  '''
+}
+
+Table pf_registration {
+  ID                bigint              [pk, note: 'WordPress post ID']
+  post_title        varchar             [note: '報名標題（自動產生）']
+  post_status       registration_status [note: '報名狀態']
+  post_type         varchar             [note: 'pf_registration', default: 'pf_registration']
+
+  // post_meta
+  activity_id       varchar             [note: '關聯活動 ID（YouTube video ID）']
+  identity_id       varchar             [note: '用戶識別 ID（LINE userId 或 WP user ID）']
+  identity_provider identity_provider   [note: '用戶識別提供商']
+  promo_link_id     bigint              [note: '來源推廣連結 ID', ref: > pf_promo_link.ID]
+  auto_approved     varchar             [note: '是否自動審核通過（yes/no）']
+
+  Note: '''
+  活動報名 CPT。記錄用戶的活動報名紀錄。
+  狀態生命週期：pending -> success / rejected / failed / cancelled。
+  狀態改變時觸發 power_funnel/registration/{status} action。
+  '''
+}
+
+Table pf_workflow_rule {
+  ID             bigint               [pk, note: 'WordPress post ID']
+  post_title     varchar              [note: '規則名稱']
+  post_status    workflow_rule_status [note: '規則狀態']
+  post_type      varchar              [note: 'pf_workflow_rule', default: 'pf_workflow_rule']
+
+  // post_meta
+  trigger_point  varchar              [note: '觸發時機 hook name（如 pf/trigger/registration_created）']
+  nodes          text                 [note: 'JSON: NodeDTO[]，節點陣列']
+
+  Note: '''
+  工作流規則 CPT。管理員設計的工作流模板。
+  發布後在對應的 trigger_point hook 上掛載監聽器。
+  當 hook 被觸發時，從此規則建立 Workflow 實例。
+  '''
+}
+
+Table pf_workflow {
+  ID                    bigint          [pk, note: 'WordPress post ID']
+  post_title            varchar         [note: '工作流名稱']
+  post_status           workflow_status [note: '執行狀態']
+  post_type             varchar         [note: 'pf_workflow', default: 'pf_workflow']
+
+  // post_meta
+  workflow_rule_id      bigint          [note: '來源規則 ID', ref: > pf_workflow_rule.ID]
+  trigger_point         varchar         [note: '觸發時機 hook name']
+  nodes                 text            [note: 'JSON: NodeDTO[]，節點陣列（從規則複製）']
+  context_callable_set  text            [note: 'JSON: {callable, params}，上下文取得方式']
+  results               text            [note: 'JSON: WorkflowResultDTO[]，執行結果陣列']
+
+  Note: '''
+  工作流實例 CPT。由 WorkflowRule 觸發後建立。
+  逐節點執行，每個節點執行結果記入 results。
+  全部完成 -> completed，任一失敗 -> failed。
+  '''
+}
+
+// ===================== Tables (wp_options) =====================
+
+Table wp_options_line_setting {
+  option_name  varchar [pk, note: '_power_funnel_line_setting']
+  liff_id              varchar [note: 'LIFF ID']
+  liff_url             varchar [note: 'LIFF URL']
+  channel_id           varchar [note: 'LINE Channel ID']
+  channel_secret       varchar [note: 'LINE Channel Secret']
+  channel_access_token varchar [note: 'LINE Channel Access Token']
+
+  Note: '''
+  LINE Messaging API 設定。
+  儲存於 wp_options，option_name = _power_funnel_line_setting。
+  '''
+}
+
+Table wp_options_youtube_setting {
+  option_name   varchar [pk, note: '_power_funnel_youtube_setting']
+  clientId      varchar [note: 'Google OAuth Client ID']
+  clientSecret  varchar [note: 'Google OAuth Client Secret']
+  redirectUri   varchar [note: 'OAuth Redirect URI（自動填入 site_url）']
+
+  Note: '''
+  YouTube API 設定。
+  儲存於 wp_options，option_name = _power_funnel_youtube_setting。
+  '''
+}
+
+Table wp_options_youtube_oauth_token {
+  option_name    varchar [pk, note: '_power_funnel_youtube_oauth_token']
+  access_token   varchar [note: 'Google OAuth Access Token']
+  refresh_token  varchar [note: 'Google OAuth Refresh Token']
+  expires_in     int     [note: 'Token 有效期（秒）']
+  created        int     [note: 'Token 建立時間（Unix timestamp）']
+
+  Note: '''
+  YouTube OAuth Token。
+  儲存於 wp_options，option_name = _power_funnel_youtube_oauth_token。
+  Token 過期時自動使用 refresh_token 刷新。
+  '''
+}
+
+// ===================== Refs =====================
+
+Ref: pf_registration.promo_link_id > pf_promo_link.ID
+Ref: pf_workflow.workflow_rule_id > pf_workflow_rule.ID
