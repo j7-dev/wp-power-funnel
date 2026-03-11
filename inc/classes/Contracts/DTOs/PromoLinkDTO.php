@@ -43,15 +43,16 @@ final class PromoLinkDTO extends DTO {
 	 * @return self PromoLinkDTO 實例
 	 */
 	public static function of( string $post_id ): self {
-		$message_tpl_ids = \get_post_meta($post_id, 'message_tpl_ids', true);
+		$int_post_id     = (int) $post_id;
+		$message_tpl_ids = \get_post_meta($int_post_id, 'message_tpl_ids', true);
 		$message_tpl_ids = \is_array($message_tpl_ids) ? $message_tpl_ids : [];
 		$args            = [
 			'id'              => $post_id,
-			'name'            => (string) \get_the_title($post_id),
-			'link_provider'   => (string) \get_post_meta($post_id, 'link_provider', true) ?: 'line',
-			'keyword'         => (string) \get_post_meta( $post_id, 'keyword', true),
-			'last_n_days'     => (int) \get_post_meta( $post_id, 'last_n_days', true),
-			'alt_text'        => (string) \get_post_meta( $post_id, 'alt_text', true),
+			'name'            => (string) \get_the_title($int_post_id),
+			'link_provider'   => (string) \get_post_meta($int_post_id, 'link_provider', true) ?: 'line',
+			'keyword'         => (string) \get_post_meta( $int_post_id, 'keyword', true),
+			'last_n_days'     => (int) \get_post_meta( $int_post_id, 'last_n_days', true),
+			'alt_text'        => (string) \get_post_meta( $int_post_id, 'alt_text', true),
 			'message_tpl_ids' => $message_tpl_ids,
 		];
 		return new self($args);
@@ -74,7 +75,7 @@ final class PromoLinkDTO extends DTO {
 	public function save( array $meta_input ): void {
 		\wp_update_post(
 			[
-				'ID'         => $this->id,
+				'ID'         => (int) $this->id,
 				'meta_input' => $meta_input,
 			]
 			);
@@ -100,6 +101,7 @@ final class PromoLinkDTO extends DTO {
 	 * 取得 LINE PostbackAction 參數
 	 *
 	 * @param ActivityDTO $activity 活動 DTO
+	 * @return array{type: string, label: string, data: string|false} LINE PostbackAction 參數
 	 */
 	public function get_line_post_back_params( ActivityDTO $activity ): array {
 		return [

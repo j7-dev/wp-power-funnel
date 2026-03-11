@@ -8,6 +8,7 @@ use J7\PowerFunnel\Domains\Activity\Services\ActivityService;
 use J7\WpUtils\Classes\ApiBase;
 use J7\WpUtils\Traits\SingletonTrait;
 
+/** Activity API */
 final class ActivityApi extends ApiBase {
 	use SingletonTrait;
 

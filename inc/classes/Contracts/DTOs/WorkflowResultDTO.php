@@ -6,6 +6,7 @@ namespace J7\PowerFunnel\Contracts\DTOs;
 
 use J7\WpUtils\Classes\DTO;
 
+/** Workflow 執行結果 DTO */
 final class WorkflowResultDTO extends DTO {
 
 	/** @var string 執行的節點 id */

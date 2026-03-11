@@ -29,7 +29,7 @@ final class SendLine {
 	 */
 	public static function send_message( ProfileDTO $profile, array $url_params ): void {
 		$promo_link_id = $url_params['promoLinkId'] ?? null;
-		if ( !$promo_link_id ) {
+		if ( !$promo_link_id || !\is_string( $promo_link_id ) ) {
 			return;
 		}
 		$promo_link_dto = PromoLinkDTO::of( $promo_link_id );

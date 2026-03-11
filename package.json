@@ -33,5 +33,19 @@
 		"@power/tailwind-config": "workspace:*",
 		"@power/typescript-config": "workspace:*"
 	},
-	"bin": "./bin/create.cjs"
+	"bin": "./bin/create.cjs",
+	"dependenciesMeta": {
+		"antd-toolkit": {
+			"injected": true
+		},
+		"@power/eslint-config": {
+			"injected": true
+		},
+		"@power/tailwind-config": {
+			"injected": true
+		},
+		"@power/typescript-config": {
+			"injected": true
+		}
+	}
 }

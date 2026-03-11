@@ -16,7 +16,7 @@ enum EOptionName: string {
 	case YOUTUBE      = 'youtube';
 	case GOOGLE_OAUTH = 'googleOauth';
 
-	/** 取得設定 */
+	/** @return array<string, mixed> 取得設定 */
 	public function get_settings(): array {
 		$service = YoutubeService::instance();
 		return match ($this) {
@@ -29,7 +29,7 @@ enum EOptionName: string {
 		};
 	}
 
-	/** 儲存 */
+	/** @param array<string, mixed> $data 設定資料 */
 	public function save( array $data ): bool {
 		return match ($this) {
 			self::LINE         => ( new LineSettingDTO($data) )->save(),

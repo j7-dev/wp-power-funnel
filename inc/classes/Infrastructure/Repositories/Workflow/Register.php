@@ -91,7 +91,7 @@ final class Register {
 	 *
 	 * @param string $workflow_id 工作流 id
 	 */
-	public function start_workflow( string $workflow_id ): void {
+	public static function start_workflow( string $workflow_id ): void {
 		$workflow_dto = WorkflowDTO::of( $workflow_id );
 		$workflow_dto->try_execute();
 	}

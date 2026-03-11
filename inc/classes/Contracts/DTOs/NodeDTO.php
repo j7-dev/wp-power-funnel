@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Contracts\DTOs;
 
-use _PHPStan_5adafcbb8\Nette\Neon\Exception;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\Repository;
 use J7\WpUtils\Classes\DTO;
 
@@ -29,17 +28,13 @@ final class NodeDTO extends DTO {
 	/** @var string Node ID */
 	public string $node_definition_id;
 
-	/** @var string|array match callback 滿足條件，才會執行 callback， */
+	/** @var string|array<int, string> match callback 滿足條件，才會執行 callback， */
 	public string|array $match_callback = '__return_true';
 
 	/** @var array<string, mixed> match_callback_params 接受的參數 */
 	public array $match_callback_params = [];
 
 	// endregion callback 調用時屬性
-
-
-	/** @var ?NodeDTO $next_node 下個要執行的 node，包含用戶儲存的資料  */
-	private ?NodeDTO $next_node = null;
 
 
 
@@ -80,13 +75,13 @@ final class NodeDTO extends DTO {
 
 			$definition = Repository::get_node_definition( $this->node_definition_id );
 			if (!$definition) {
-				throw new Exception("找不到 {$this->node_definition_id} 節點定義");
+				throw new \RuntimeException("找不到 {$this->node_definition_id} 節點定義");
 			}
 
 			// 2. 執行，並添加結果
 			$result = $definition->execute($this, $workflow_dto);
 			if (!$result->is_success()) {
-				throw new Exception($result->message);
+				throw new \RuntimeException($result->message);
 			}
 			$workflow_dto->add_result( $index, $result);
 		} catch (\Throwable $e) {

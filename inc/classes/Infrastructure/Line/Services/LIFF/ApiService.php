@@ -40,22 +40,10 @@ final class ApiService extends ApiBase {
 	 * @phpstan-ignore-next-line
 	 */
 	public function post_liff_callback( \WP_REST_Request $request ): \WP_REST_Response {
-		/** @var array{
-		 *      userId: string,
-		 *      name:string,
-		 *      picture:string,
-		 *      os: string,
-		 *      version: string,
-		 *      lineVersion: ?string,
-		 *      isInClient:bool,
-		 *      isLoggedIn:bool,
-		 *
-		 *      promoLinkId: ?string
-		 * } $params
-		 */
+		/** @var array<string, mixed> $params */
 		$params     = $request->get_params();
 		$profile    = new ProfileDTO( $params );
-		$url_params = $params['urlParams'] ?? [];
+		$url_params = isset($params['urlParams']) && \is_array($params['urlParams']) ? $params['urlParams'] : [];
 
 		\do_action( 'power_funnel/liff_callback', $profile, $url_params );
 

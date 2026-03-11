@@ -15,10 +15,10 @@ final class SettingDTO extends DTO {
 	/** @var string 儲存在 options table 的 option name */
 	private const OPTION_NAME = '_power_funnel_line_setting';
 
-	/** LIFF ID */
+	/** @var string LIFF ID */
 	public string $liff_id = '';
 
-	/** LIFF URL */
+	/** @var string LIFF URL */
 	public string $liff_url = '';
 
 	/**

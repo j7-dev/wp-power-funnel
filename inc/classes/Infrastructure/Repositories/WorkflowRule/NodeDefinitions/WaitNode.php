@@ -12,6 +12,7 @@ use J7\PowerFunnel\Shared\Enums\ENodeType;
 use J7\PowerFunnel\Shared\Enums\EWorkflowStatus;
 use J7\Powerhouse\Contracts\DTOs\FormFieldDTO;
 
+/** Wait 節點定義 */
 final class WaitNode extends BaseNodeDefinition {
 
 	// region 前端顯示屬性

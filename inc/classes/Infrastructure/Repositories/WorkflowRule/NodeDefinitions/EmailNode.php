@@ -12,6 +12,7 @@ use J7\PowerFunnel\Shared\Enums\ENodeType;
 use J7\Powerhouse\Contracts\DTOs\FormFieldDTO;
 use J7\Powerhouse\Contracts\DTOs\MessageTemplateDTO;
 
+/** Email 節點定義 */
 final class EmailNode extends BaseNodeDefinition {
 
 	// region 前端顯示屬性
@@ -32,11 +33,7 @@ final class EmailNode extends BaseNodeDefinition {
 	public ENodeType $type = ENodeType::SEND_MESSAGE;
 
 	/** @var array<string, FormFieldDTO> 欄位資料 */
-	public array $form_fields = [
-		'recipient'   => [],
-		'subject_tpl' => [],
-		'content_tpl' => [],
-	];
+	public array $form_fields = [];
 
 	// endregion 前端顯示屬性
 

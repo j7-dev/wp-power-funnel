@@ -9,6 +9,7 @@ use J7\PowerFunnel\Shared\Enums\EOptionName;
 use J7\WpUtils\Classes\ApiBase;
 use J7\WpUtils\Traits\SingletonTrait;
 
+/** Option API */
 final class OptionApi extends ApiBase {
 	use SingletonTrait;
 
@@ -82,6 +83,7 @@ final class OptionApi extends ApiBase {
 			if (!\is_array($data)) {
 				continue;
 			}
+			/** @var array<string, mixed> $data */
 			$option_name->save($data);
 		}
 

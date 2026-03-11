@@ -60,7 +60,7 @@ abstract class BaseNodeDefinition {
 	 */
 	abstract public function execute( NodeDTO $node, WorkflowDTO $workflow ): WorkflowResultDTO;
 
-	/** To Array */
+	/** @return array<string, mixed> To Array */
 	public function to_array(): array {
 		return [
 			'id'          => $this->id,

@@ -22,6 +22,7 @@ $liff_style = \J7\PowerFunnel\Plugin::$url . '/js/dist/css/style.css?ver=' . \J7
 	<meta charset="<?php \bloginfo('charset'); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- This is a standalone LIFF page without wp_head(). ?>
 	<link rel='stylesheet' id='liff-css' href='<?php echo $liff_style; ?>' media='all' />
 	<title><?php echo \bloginfo('name'); ?></title>
 </head>

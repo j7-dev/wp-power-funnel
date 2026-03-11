@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace J7\PowerFunnel\Contracts\DTOs;
 
 use J7\PowerFunnel\Shared\Enums\EWorkflowStatus;
-use J7\Powerhouse\Contracts\DTOs\CallableDTO;
 use J7\WpUtils\Classes\DTO;
 
 /**
@@ -44,25 +43,32 @@ final class WorkflowDTO extends DTO {
 	 * @return array<string, mixed> context array
 	 */
 	private static function get_context( string $post_id ): array {
-		$context_callable_set = \get_post_meta($post_id, 'context_callable_set', true);
+		$context_callable_set = \get_post_meta( (int) $post_id, 'context_callable_set', true);
 		$context_callable_set = \is_array($context_callable_set) ? $context_callable_set : [];
-		/** @var array<string, mixed> $result */
-		return ( new CallableDTO( $context_callable_set) )->get_result();
+		$callable             = $context_callable_set['callable'] ?? null;
+		$params               = $context_callable_set['params'] ?? [];
+		if (\is_callable($callable) && \is_array($params)) {
+			$result = \call_user_func_array($callable, $params);
+			return \is_array($result) ? $result : [];
+		}
+		return [];
 	}
 
 	/** 取得實例 */
 	public static function of( string $post_id ): self {
-		$nodes_array   = \get_post_meta($post_id, 'nodes', true);
+		$int_post_id   = (int) $post_id;
+		$nodes_array   = \get_post_meta($int_post_id, 'nodes', true);
 		$nodes_array   = \is_array($nodes_array) ? $nodes_array : [];
-		$results_array = \get_post_meta($post_id, 'results', true);
+		$results_array = \get_post_meta($int_post_id, 'results', true);
 		$results_array = \is_array($results_array) ? $results_array : [];
 
-		$args =[
+		$post_status = \get_post_status($int_post_id);
+		$args        =[
 			'id'               => $post_id,
-			'name'             => \get_the_title($post_id),
-			'status'           => EWorkflowStatus::from(\get_post_status($post_id)),
-			'workflow_rule_id' => \get_post_meta($post_id, 'workflow_rule_id', true),
-			'trigger_point'    => \get_post_meta($post_id, 'trigger_point', true),
+			'name'             => \get_the_title($int_post_id),
+			'status'           => EWorkflowStatus::from(\is_string($post_status) ? $post_status : ''),
+			'workflow_rule_id' => (string) \get_post_meta($int_post_id, 'workflow_rule_id', true),
+			'trigger_point'    => (string) \get_post_meta($int_post_id, 'trigger_point', true),
 			'nodes'            => \array_values( NodeDTO::parse_array( $nodes_array )),
 			'context'          => self::get_context($post_id),
 			'results'          => \array_values( WorkflowResultDTO::parse_array( $results_array )),
@@ -82,7 +88,7 @@ final class WorkflowDTO extends DTO {
 		}
 
 		$current_index = $this->get_current_index();
-		if ($this->is_completed()) {
+		if ($current_index === null) {
 			$this->set_status( EWorkflowStatus::COMPLETED);
 			return;
 		}
@@ -119,23 +125,18 @@ final class WorkflowDTO extends DTO {
 		return $results_count;
 	}
 
-	/** 是否已經完成 */
-	private function is_completed(): bool {
-		return $this->get_current_index() === null;
-	}
-
 	/** 添加結果，儲存進 db */
 	public function add_result( int $index, WorkflowResultDTO $result ): void {
 		$this->results[ $index ] = $result;
 		$results_array           = \array_map( static fn( $r ) => $r->to_array(), $this->results );
-		\update_post_meta( $this->id, 'results', $results_array );
+		\update_post_meta( (int) $this->id, 'results', $results_array );
 	}
 
 	/** 設定狀態 */
 	private function set_status( EWorkflowStatus $status ): void {
 		\wp_update_post(
 			[
-				'ID'          => $this->id,
+				'ID'          => (int) $this->id,
 				'post_status' => $status->value,
 			]
 			);

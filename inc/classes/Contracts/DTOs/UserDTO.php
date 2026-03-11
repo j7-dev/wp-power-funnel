@@ -46,15 +46,13 @@ final class UserDTO extends DTO {
 	 * @return string 用戶顯示名稱
 	 */
 	private static function get_display_name( string $id, EIdentityProvider $identity_provider ): string {
-		switch ($identity_provider) {
-			case EIdentityProvider::LINE:
-				$service = MessageService::instance();
-				return $service->get_profile($id)->getDisplayName();
-			case EIdentityProvider::WP:
+		return match ($identity_provider) {
+			EIdentityProvider::LINE => MessageService::instance()->get_profile($id)->getDisplayName(),
+			EIdentityProvider::WP => ( static function () use ( $id ): string {
 				$user = \get_user_by('id', $id);
 				return $user ? $user->display_name : '';
-		}
-		return '';
+			} )(),
+		};
 	}
 
 	/**
@@ -66,14 +64,10 @@ final class UserDTO extends DTO {
 	 */
 	private static function get_user_avatar( string $id, EIdentityProvider $identity_provider ): string {
 		try {
-			switch ($identity_provider) {
-				case EIdentityProvider::LINE:
-					$service = MessageService::instance();
-					return $service->get_profile($id)->getPictureUrl();
-				case EIdentityProvider::WP:
-					return \get_avatar_url($id) ?: '';
-			}
-			return '';
+			return match ($identity_provider) {
+				EIdentityProvider::LINE => MessageService::instance()->get_profile($id)->getPictureUrl() ?? '',
+				EIdentityProvider::WP => \get_avatar_url($id) ?: '',
+			};
 		} catch (\Throwable $e) {
 			Plugin::logger(
 				"取得用戶大頭照失敗: {$e->getMessage()}",

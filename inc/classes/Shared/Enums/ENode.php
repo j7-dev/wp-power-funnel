@@ -84,8 +84,8 @@ enum ENode: string {
 		return [];
 	}
 
-	/** @var string|array callable callback */
-	public function callback(): string|array {
+	/** @return string callable callback */
+	public function callback(): string {
 		// TODO
 		return match ( $this ) {
 			self::EMAIL => '__return_true',
@@ -98,11 +98,10 @@ enum ENode: string {
 			self::YES_NO_BRANCH => '__return_true',
 			self::SPILT_BRANCH => '__return_true',
 			self::TAG_USER => '__return_true',
-			default => '__return_true'
 		};
 	}
 
-	/** @var array<mixed> callback 接受的參數，會按照順序傳入 callback, 例如 [$var1, $var2, $var3...] */
+	/** @return array<int, mixed> callback 接受的參數，會按照順序傳入 callback, 例如 [$var1, $var2, $var3...] */
 	public function callback_params(): array {
 		// TODO
 		return match ( $this ) {
@@ -110,7 +109,7 @@ enum ENode: string {
 		};
 	}
 
-	/** @var array<string, mixed> 額外的上下文，通常是用戶自己在 Node 節點內設置的參數 */
+	/** @return array<string, mixed> 額外的上下文，通常是用戶自己在 Node 節點內設置的參數 */
 	public function additional_context(): array {
 		// TODO
 		return match ( $this ) {

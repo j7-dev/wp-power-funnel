@@ -12,7 +12,7 @@ use J7\PowerFunnel\Shared\Enums\EIdentityProvider;
  */
 interface IWebhookHelper {
 
-	/** @return array 取得 webhook 上 payload */
+	/** @return array<string, mixed> 取得 webhook 上 payload */
 	public function get_payload(): array;
 
 	/** @return EAction|null 要執行的動作 */

@@ -5,17 +5,24 @@
  */
 
 $dirs_to_remove = [
-    "./vendor-prefixed",
+	'./vendor-prefixed',
 ];
 
 foreach ($dirs_to_remove as $dir) {
 	if (is_dir($dir)) {
 		echo "Removing: $dir\n";
-		deleteDirectory($dir);
+		delete_directory($dir);
 	}
 }
 
-function deleteDirectory( $dir ) {
+/**
+ * Recursively delete a directory and its contents.
+ *
+ * @param string $dir The directory path to delete.
+ *
+ * @return bool Whether the directory was successfully deleted.
+ */
+function delete_directory( $dir ) {
 	if (!file_exists($dir)) {
 		return true;
 	}
@@ -29,7 +36,7 @@ function deleteDirectory( $dir ) {
 			continue;
 		}
 
-		if (!deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
+		if (!delete_directory($dir . DIRECTORY_SEPARATOR . $item)) {
 			return false;
 		}
 	}

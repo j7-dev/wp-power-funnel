@@ -13,7 +13,7 @@ final class Repository {
 	/**
 	 * 創建待審核的報名
 	 *
-	 * @param array $args wp_insert_post 的參數
+	 * @param array<string, mixed> $args wp_insert_post 的參數
 	 * @return int registration ID
 	 */
 	public static function create( array $args = [] ): int {
@@ -21,8 +21,9 @@ final class Repository {
 			'post_status' => ERegistrationStatus::PENDING->value,
 			'post_type'   => Register::post_type(),
 		];
-		$args    = \wp_parse_args($args, $default);
-		$result  = \wp_insert_post($args);
+		$args   = \wp_parse_args($args, $default);
+		/** @var int|\WP_Error $result */
+		$result = \wp_insert_post($args);
 		if (\is_wp_error($result)) {
 			throw new \Exception( "創建報名失敗: {$result->get_error_message()}" );
 		}

@@ -31,7 +31,7 @@ final class RegisterService {
 	}
 
 	/** Add rewrite rule  */
-	public static function add_liff_rewrite_rule() {
+	public static function add_liff_rewrite_rule(): void {
 		\add_rewrite_rule(
 			'^' . self::LIFF_QUERY_VAR . '/?$', // 路由規則
 			'index.php?' . self::LIFF_QUERY_VAR . '=1', // 對應的 query var
@@ -39,7 +39,12 @@ final class RegisterService {
 		);
 	}
 
-	/** 註冊 Query Var */
+	/**
+	 * 註冊 Query Var
+	 *
+	 * @param array<int, string> $vars 原始 query vars
+	 * @return array<int, string> 新增後的 query vars
+	 */
 	public static function register_liff_query_var( array $vars ): array {
 		$vars[] = self::LIFF_QUERY_VAR;
 		return $vars;

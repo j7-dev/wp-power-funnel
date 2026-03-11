@@ -28,11 +28,11 @@ final class RegistrationDTO extends DTO {
 
 	/** 取得實例 */
 	public static function of( \WP_Post $post ): self {
-		$activity_id             = \get_post_meta($post->ID, 'activity_id', true);
-		$identity_id             = \get_post_meta($post->ID, 'identity_id', true);
-		$promo_link_id           = \get_post_meta($post->ID, 'promo_link_id', true);
-		$identity_provider_value = \get_post_meta($post->ID, 'identity_provider', true);
-		$auto_approved           = \get_post_meta($post->ID, 'auto_approved', true);
+		$activity_id             = (string) \get_post_meta($post->ID, 'activity_id', true);
+		$identity_id             = (string) \get_post_meta($post->ID, 'identity_id', true);
+		$promo_link_id           = (string) \get_post_meta($post->ID, 'promo_link_id', true);
+		$identity_provider_value = (string) \get_post_meta($post->ID, 'identity_provider', true);
+		$auto_approved           = (string) \get_post_meta($post->ID, 'auto_approved', true);
 		$identity_provider       = EIdentityProvider::from( $identity_provider_value );
 		$args                    = [
 			'id'            => $post->ID,

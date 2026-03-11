@@ -6,7 +6,6 @@ namespace J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule;
 
 use J7\PowerFunnel\Contracts\DTOs\NodeDTO;
 use J7\PowerFunnel\Contracts\DTOs\WorkflowDTO;
-use J7\Powerhouse\Contracts\DTOs\CallableDTO;
 use J7\Powerhouse\Shared\Helpers\ReplaceHelper;
 
 /**
@@ -32,9 +31,6 @@ final class ParamHelper {
 	 */
 	public function try_get_param( string $key ): mixed {
 		$maybe_value = $this->node->try_get_param( $key);
-		if ($maybe_value instanceof CallableDTO) {
-			return $maybe_value->get_result();
-		}
 		if (self::CONTEXT === $maybe_value) {
 			return $this->workflow->context[ $key ] ?? null;
 		}

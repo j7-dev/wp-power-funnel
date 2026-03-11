@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace J7\PowerFunnel\Infrastructure\Line\Services;
 
+/** LINE 服務註冊 */
 final class Register {
 
 	/** Register hooks */

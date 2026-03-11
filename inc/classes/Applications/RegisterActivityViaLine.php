@@ -111,13 +111,15 @@ final class RegisterActivityViaLine {
 	 * @param \WP_Post $post 文章物件
 	 */
 	public static function line( string $new_status, string $old_status, \WP_Post $post ): void {
+		$status = null;
 		try {
 			$status           = ERegistrationStatus::from( $new_status );
 			$registration_dto = RegistrationDTO::of( $post );
 
 			self::send_text_message( $registration_dto, $status);
 		} catch (\Throwable $e) {
-			Plugin::logger( "用戶報名 #{$post->ID} 狀態轉為{$status->label()}時，發 line 失敗: {$e->getMessage()}", 'error');
+			$status_label = $status instanceof ERegistrationStatus ? $status->label() : $new_status;
+			Plugin::logger( "用戶報名 #{$post->ID} 狀態轉為{$status_label}時，發 line 失敗: {$e->getMessage()}", 'error');
 		}
 	}
 
@@ -136,7 +138,7 @@ final class RegisterActivityViaLine {
 
 		\wp_update_post(
 			[
-				'ID'          => $registration_dto->id,
+				'ID'          => (int) $registration_dto->id,
 				'post_status' => ERegistrationStatus::SUCCESS->value,
 			]
 		);
@@ -161,7 +163,10 @@ final class RegisterActivityViaLine {
 		if (!$message_tpl_id) {
 			return;
 		}
-		$message_tpl_dto  = MessageTemplateDTO::of( $message_tpl_id );
+		$message_tpl_dto = MessageTemplateDTO::of( $message_tpl_id );
+		if (!$message_tpl_dto) {
+			return;
+		}
 		$replaced_message = ( new ReplaceHelper($message_tpl_dto->content) )->replace( $activity_dto )->replace( $user_dto )->get_replaced_template();
 		if (!$replaced_message || $message_tpl_dto->content_type !== EContentType::PLAIN_TEXT) { // 只接受純文字
 			return;

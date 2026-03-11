@@ -5,6 +5,7 @@ declare ( strict_types = 1 );
 namespace J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule;
 
 use J7\PowerFunnel\Contracts\DTOs\WorkflowRuleDTO;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\BaseNodeDefinition;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\EmailNode;
 
 /** Class Register */
@@ -15,7 +16,6 @@ final class Register {
 	/** Register hooks */
 	public static function register_hooks(): void {
 		\add_action( 'init', [ __CLASS__, 'register_cpt' ] );
-		\add_action( 'init', [ __CLASS__, 'register_default_trigger_points' ] );
 		\add_filter('power_funnel/workflow_rule/node_definitions', [ __CLASS__, 'register_default_node_definitions' ]);
 	}
 
@@ -59,7 +59,12 @@ final class Register {
 		}
 	}
 
-	/** 註冊預設的 node definitions */
+	/**
+	 * 註冊預設的 node definitions
+	 *
+	 * @param array<string, BaseNodeDefinition> $node_definitions 現有的 node definitions
+	 * @return array<string, BaseNodeDefinition> 新增後的 node definitions
+	 */
 	public static function register_default_node_definitions( array $node_definitions ): array {
 		$definitions = [
 			new EmailNode(),

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace J7\PowerFunnel\Contracts\DTOs;
 
 use J7\PowerFunnel\Infrastructure\Repositories\Workflow\Repository;
-use J7\Powerhouse\Contracts\DTOs\CallableDTO;
 use J7\WpUtils\Classes\DTO;
 
 /**
@@ -27,13 +26,14 @@ final class WorkflowRuleDTO extends DTO {
 
 	/** 取得實例 */
 	public static function of( string $post_id ): self {
-		$nodes_array = \get_post_meta($post_id, 'nodes', true);
+		$int_post_id = (int) $post_id;
+		$nodes_array = \get_post_meta($int_post_id, 'nodes', true);
 		$nodes_array = \is_array($nodes_array) ? $nodes_array : [];
 
 		$args =[
 			'id'            => $post_id,
-			'name'          => \get_the_title($post_id),
-			'trigger_point' => \get_post_meta($post_id, 'trigger_point', true),
+			'name'          => \get_the_title($int_post_id),
+			'trigger_point' => (string) \get_post_meta($int_post_id, 'trigger_point', true),
 			'nodes'         => NodeDTO::parse_array( $nodes_array ),
 		];
 		return new self($args);
@@ -43,9 +43,12 @@ final class WorkflowRuleDTO extends DTO {
 	public function register(): void {
 		\add_action(
 			$this->trigger_point,
-			function ( CallableDTO $context_callable_dto ): void {
+			/**
+			 * @param array<string, mixed> $context_callable_set callable set
+			 */
+			function ( array $context_callable_set = [] ): void {
 				$workflow_rule_dto = WorkflowRuleDTO::of($this->id);
-				Repository::create_from( $workflow_rule_dto, $context_callable_dto);
+				Repository::create_from( $workflow_rule_dto, $context_callable_set);
 			},
 		);
 	}
