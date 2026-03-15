@@ -1,0 +1,19 @@
+[ACTIVITY] 工作流自動化流程
+
+[ACTOR] 管理員 -> {specs/actors/管理員.md}
+[ACTOR] WordPress -> {specs/actors/WordPress.md}
+[ACTOR] Action_Scheduler -> {specs/actors/Action_Scheduler.md}
+
+[STEP:1] @管理員 {features/workflow/建立工作流規則.feature}
+[STEP:2] @管理員 {features/workflow/發布工作流規則.feature}
+[STEP:3] @WordPress {features/workflow/從規則建立工作流實例.feature}
+[STEP:4] @WordPress {features/workflow/執行工作流節點.feature}
+[DECISION:4a] 節點執行結果？
+  [BRANCH:4a:成功且有下一節點 -> 4] @WordPress {features/workflow/執行工作流節點.feature}
+  [BRANCH:4a:成功且無下一節點] @WordPress {features/workflow/完成工作流.feature}
+  [BRANCH:4a:失敗] @WordPress {features/workflow/標記工作流失敗.feature}
+  [BRANCH:4a:跳過且有下一節點 -> 4] @WordPress {features/workflow/執行工作流節點.feature}
+  [BRANCH:4a:需等待] @Action_Scheduler {features/workflow/排程等待節點.feature}
+[MERGE:4a]
+
+[END]

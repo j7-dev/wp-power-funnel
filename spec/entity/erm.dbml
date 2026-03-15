@@ -1,8 +1,15 @@
-// Power Funnel — Entity Relationship Model
-// Version: 0.0.1 | Date: 2026-03-11
+// Power Funnel -- Entity Relationship Model
+// Version: 0.1.0 | Date: 2026-03-12
 //
 // 本專案使用 WordPress CPT (Custom Post Type) 與 wp_options 作為資料儲存，
 // 不使用自訂 DB table。以下以 DBML 語法描述邏輯結構。
+//
+// Feature 對應關係：
+//   pf_promo_link     <- 建立推廣連結.feature, 編輯推廣連結.feature, 發送LINE活動Carousel.feature
+//   pf_registration   <- LINE報名活動.feature, 建立報名紀錄.feature, 自動審核報名.feature, 發送報名狀態LINE通知.feature
+//   pf_workflow_rule  <- 建立工作流規則.feature, 發布工作流規則.feature
+//   pf_workflow       <- 從規則建立工作流實例.feature, 執行工作流節點.feature, 完成工作流.feature, 標記工作流失敗.feature, 排程等待節點.feature
+//   wp_options_*      <- 儲存設定.feature, 查詢設定.feature, Google_OAuth授權.feature
 
 // ===================== Enums =====================
 
@@ -54,75 +61,104 @@ Table pf_promo_link {
   last_n_days    int     [note: '篩選未來 N 天內的活動']
   alt_text       varchar [note: 'LINE Carousel 替代文字']
   action_label   varchar [note: 'LINE 動作按鈕文字，預設「立即報名」']
-  message_tpl_ids text   [note: 'JSON: {status: message_template_post_id}']
+  message_tpl_ids text   [note: 'JSON: {registration_status: message_template_post_id}，各報名狀態對應的訊息模板 ID']
 
   Note: '''
   推廣連結 CPT。管理員建立推廣連結，綁定活動篩選條件。
   用戶透過 LIFF App 打開推廣連結時，系統發送 LINE Carousel 活動列表。
+  約束：
+  - keyword 與 last_n_days 作為篩選條件傳給 ActivityService
+  - action_label 預設值為「立即報名」
+  - link_provider 預設值為「line」
   '''
 }
 
 Table pf_registration {
   ID                bigint              [pk, note: 'WordPress post ID']
-  post_title        varchar             [note: '報名標題（自動產生）']
+  post_title        varchar             [note: '報名標題（自動產生：{identity_provider} 用戶報名 {activity.title}）']
   post_status       registration_status [note: '報名狀態']
   post_type         varchar             [note: 'pf_registration', default: 'pf_registration']
 
   // post_meta
   activity_id       varchar             [note: '關聯活動 ID（YouTube video ID）']
-  identity_id       varchar             [note: '用戶識別 ID（LINE userId 或 WP user ID）']
-  identity_provider identity_provider   [note: '用戶識別提供商']
+  identity_id       varchar             [not null, note: '用戶識別 ID（LINE userId 或 WP user ID）']
+  identity_provider identity_provider   [not null, note: '用戶識別提供商']
   promo_link_id     bigint              [note: '來源推廣連結 ID', ref: > pf_promo_link.ID]
-  auto_approved     varchar             [note: '是否自動審核通過（yes/no）']
+  auto_approved     varchar             [note: '是否自動審核通過（yes/no），繼承自推廣連結設定']
 
   Note: '''
   活動報名 CPT。記錄用戶的活動報名紀錄。
-  狀態生命週期：pending -> success / rejected / failed / cancelled。
-  狀態改變時觸發 power_funnel/registration/{status} action。
+  約束：
+  - 同一 identity_id + identity_provider + activity_id 不可重複報名（由 check_registered filter 檢查）
+  - activity_id 與 identity_id 不可為空（由 LINE報名活動.feature 前置參數驗證）
+  - activity_id 對應的活動必須存在（由 ActivityService::get_activity 驗證）
+  狀態生命週期：
+  - 建立時為 pending
+  - auto_approved=yes 時自動轉為 success（priority=20）
+  - 狀態改變時觸發 power_funnel/registration/{status} action
+  - 每次狀態改變都發送 LINE 文字通知
   '''
 }
 
 Table pf_workflow_rule {
   ID             bigint               [pk, note: 'WordPress post ID']
-  post_title     varchar              [note: '規則名稱']
-  post_status    workflow_rule_status [note: '規則狀態']
+  post_title     varchar              [not null, note: '規則名稱']
+  post_status    workflow_rule_status  [note: '規則狀態']
   post_type      varchar              [note: 'pf_workflow_rule', default: 'pf_workflow_rule']
 
   // post_meta
-  trigger_point  varchar              [note: '觸發時機 hook name（如 pf/trigger/registration_created）']
+  trigger_point  varchar              [not null, note: '觸發時機 hook name（如 pf/trigger/registration_created）']
   nodes          text                 [note: 'JSON: NodeDTO[]，節點陣列']
 
   Note: '''
   工作流規則 CPT。管理員設計的工作流模板。
-  發布後在對應的 trigger_point hook 上掛載監聽器。
-  當 hook 被觸發時，從此規則建立 Workflow 實例。
+  約束：
+  - 建立時預設為 draft 狀態
+  - trigger_point 必須為 ETriggerPoint 已註冊的 hook name
+  - 發布後在對應的 trigger_point hook 上掛載監聽器
+  - 當 hook 被觸發時，從此規則建立 Workflow 實例
+  NodeDTO 結構：
+  - id: string（節點唯一識別碼）
+  - node_definition_id: string（對應已註冊的 NodeDefinition）
+  - params: object（節點參數，如 recipient, subject_tpl, content_tpl）
+  - match_callback: string[]（執行前檢查的 callback）
+  - match_callback_params: array（callback 參數）
   '''
 }
 
 Table pf_workflow {
   ID                    bigint          [pk, note: 'WordPress post ID']
   post_title            varchar         [note: '工作流名稱']
-  post_status           workflow_status [note: '執行狀態']
+  post_status           workflow_status  [note: '執行狀態']
   post_type             varchar         [note: 'pf_workflow', default: 'pf_workflow']
 
   // post_meta
   workflow_rule_id      bigint          [note: '來源規則 ID', ref: > pf_workflow_rule.ID]
-  trigger_point         varchar         [note: '觸發時機 hook name']
+  trigger_point         varchar         [note: '觸發時機 hook name（從規則複製）']
   nodes                 text            [note: 'JSON: NodeDTO[]，節點陣列（從規則複製）']
   context_callable_set  text            [note: 'JSON: {callable, params}，上下文取得方式']
   results               text            [note: 'JSON: WorkflowResultDTO[]，執行結果陣列']
 
   Note: '''
   工作流實例 CPT。由 WorkflowRule 觸發後建立。
-  逐節點執行，每個節點執行結果記入 results。
-  全部完成 -> completed，任一失敗 -> failed。
+  約束：
+  - 建立時狀態為 running
+  - 透過 get_current_index()（= results 數量）決定下一個要執行的節點
+  - results 數量 = nodes 數量時標記 completed
+  - 任一節點執行失敗（code != 200）時標記 failed
+  - 非 running 狀態不執行任何節點
+  WorkflowResultDTO 結構：
+  - node_id: string（對應 NodeDTO.id）
+  - code: integer（200=成功, 301=跳過, 500=失敗）
+  - message: string（結果描述）
+  - data: object（額外資料）
   '''
 }
 
 // ===================== Tables (wp_options) =====================
 
 Table wp_options_line_setting {
-  option_name  varchar [pk, note: '_power_funnel_line_setting']
+  option_name          varchar [pk, note: '_power_funnel_line_setting']
   liff_id              varchar [note: 'LIFF ID']
   liff_url             varchar [note: 'LIFF URL']
   channel_id           varchar [note: 'LINE Channel ID']
@@ -132,6 +168,10 @@ Table wp_options_line_setting {
   Note: '''
   LINE Messaging API 設定。
   儲存於 wp_options，option_name = _power_funnel_line_setting。
+  約束：
+  - channel_secret 用於 Webhook 簽章驗證
+  - channel_access_token 用於 Push Message / Reply Message API
+  - 設定不完整時（is_valid() = false）Webhook 端點拋出異常
   '''
 }
 
@@ -144,6 +184,9 @@ Table wp_options_youtube_setting {
   Note: '''
   YouTube API 設定。
   儲存於 wp_options，option_name = _power_funnel_youtube_setting。
+  約束：
+  - clientId 與 clientSecret 為 Google Cloud Console 取得
+  - redirectUri 自動使用 WordPress site_url
   '''
 }
 
@@ -157,7 +200,10 @@ Table wp_options_youtube_oauth_token {
   Note: '''
   YouTube OAuth Token。
   儲存於 wp_options，option_name = _power_funnel_youtube_oauth_token。
-  Token 過期時自動使用 refresh_token 刷新。
+  約束：
+  - Token 過期時自動使用 refresh_token 刷新
+  - refresh_token 不存在且 access_token 過期時，is_authorized = false
+  - 撤銷授權時整個 option 被刪除
   '''
 }
 

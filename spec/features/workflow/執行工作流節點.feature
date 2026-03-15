@@ -1,13 +1,14 @@
-@ignore
+@ignore @command
 Feature: 執行工作流節點
 
   Workflow 狀態為 running 時，系統依序執行節點。
-  每個節點執行後記錄結果，全部完成則標記 completed，
+  透過 get_current_index() 取得目前要執行的節點索引（= results 數量）。
+  每個節點執行後記錄結果至 results，全部完成則標記 completed，
   任一失敗則標記 failed。
 
   Background:
     Given 系統中有以下工作流：
-      | id | name           | workflow_rule_id | trigger_point                   | post_status | nodes |
+      | id | name            | workflow_rule_id | trigger_point                   | post_status | nodes                                                                                                                                                                                                                                                                                                                                                                                           |
       | 30 | Workflow 實例 1 | 20               | pf/trigger/registration_created | running     | [{"id":"n1","node_definition_id":"email","params":{"recipient":"test@example.com","subject_tpl":"歡迎","content_tpl":"感謝報名"},"match_callback":["__return_true"],"match_callback_params":[]},{"id":"n2","node_definition_id":"email","params":{"recipient":"test@example.com","subject_tpl":"提醒","content_tpl":"活動即將開始"},"match_callback":["__return_true"],"match_callback_params":[]}] |
     And Email NodeDefinition 已註冊
 
@@ -34,7 +35,7 @@ Feature: 執行工作流節點
       When 系統觸發 action "power_funnel/workflow/running" 傳入 workflow_id "30"
       Then 節點 "n1" 的結果 code 應為 301
       And 節點 "n1" 的結果 message 應包含 "不符合執行條件，跳過"
-      And 系統應繼續執行下一個節點
+      And 系統應呼叫 do_next() 繼續下一節點
 
   # ========== 後置（狀態）==========
 

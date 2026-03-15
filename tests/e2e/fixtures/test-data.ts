@@ -7,12 +7,19 @@ export const BASE_URL = 'http://localhost:8894'
 
 /* ── API Namespace / Endpoints ── */
 export const API_NS = 'power-funnel/v1'
+export const WP_API_BASE = 'wp/v2'
+
 export const EP = {
   activities: `${API_NS}/activities`,
   options: `${API_NS}/options`,
   revokeGoogleOAuth: `${API_NS}/revoke-google-oauth`,
   liff: `${API_NS}/liff`,
   lineCallback: `${API_NS}/line-callback`,
+  // WP CPT REST API
+  promoLinks: `${WP_API_BASE}/pf_promo_link`,
+  workflowRules: `${WP_API_BASE}/pf_workflow_rule`,
+  registrations: `${WP_API_BASE}/pf_registration`,
+  workflows: `${WP_API_BASE}/pf_workflow`,
 } as const
 
 /* ── LINE Mock Data ── */
@@ -106,19 +113,49 @@ export const LINE_WEBHOOK_MESSAGE_EVENT = {
 
 /* ── Edge Case Strings ── */
 export const EDGE = {
+  // 多語系字元
   unicode: '日本語テスト 한국어 العربية',
+  rtlText: 'مرحبا بالعالم',               // RTL 文字（阿拉伯文）
+  chineseText: '中文測試',
+  japaneseText: '日本語テスト',
+
+  // 特殊字元
   emoji: '🎉🚀💥🔥✅❌🤖🧪',
-  longString: 'A'.repeat(10_000),
+  emojiMixed: '🎉🚀💰',
+
+  // 惡意輸入 — XSS
   specialChars: '<script>alert("xss")</script>',
+  xssImg: '<img onerror=alert(1) src=x>',
+
+  // 惡意輸入 — SQL injection
   sqlInjection: "'; DROP TABLE wp_options; --",
+  sqlOr: "' OR 1=1 --",
+  sqlDrop: "'; DROP TABLE wp_posts; --",
+
+  // 路徑穿越
+  pathTraversal: '../../wp-config.php',
+
+  // NULL byte 注入
+  nullByte: 'test\x00inject',
+
+  // 長度邊界
+  longString: 'A'.repeat(10_000),
+  longStringShort: 'A'.repeat(5_000),
+
+  // HTML 實體
   htmlEntities: '&lt;b&gt;bold&lt;/b&gt;',
+
+  // 空值
   emptyString: '',
   whitespaceOnly: '   \t\n  ',
-  nullishValues: { nullVal: null, undefinedVal: undefined },
+
+  // 數值邊界
   maxInt: Number.MAX_SAFE_INTEGER,
   negativeInt: -1,
+  negativeInt2: -999,
   zero: 0,
-  floatValue: 3.14159,
+  floatValue: 0.5,
+  largePositive: 999999,
 } as const
 
 /* ── Response Code Constants ── */

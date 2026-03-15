@@ -1,0 +1,476 @@
+openapi: 3.0.0
+info:
+  title: Power Funnel API
+  version: 0.0.1
+  description: |
+    Power Funnel WordPress Plugin REST API.
+    All endpoints are under /wp-json/power-funnel/ namespace.
+    Authenticated endpoints require WordPress admin login (nonce-based).
+    Public endpoints (liff, line-callback) use permission_callback = __return_true.
+
+servers:
+  - url: /wp-json/power-funnel
+    description: WordPress REST API namespace
+
+paths:
+  # ===== Settings =====
+
+  /options:
+    get:
+      operationId: getOptions
+      summary: 查詢設定
+      description: |
+        取得所有 EOptionName 對應的設定值，包括 LINE、YouTube API 設定，
+        以及 Google OAuth 的授權狀態與授權 URL。
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: 取得設定成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code:
+                    type: string
+                    example: get_options_success
+                  message:
+                    type: string
+                    example: 取得設定成功
+                  data:
+                    $ref: '#/components/schemas/OptionsData'
+
+    post:
+      operationId: saveOptions
+      summary: 儲存設定
+      description: |
+        根據 EOptionName 列舉值逐一儲存對應的 wp_option。
+        body 中不存在的 key 不會被更新，值為非陣列的 key 會被跳過。
+        googleOauth 區段為唯讀，儲存時跳過。
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveOptionsRequest'
+      responses:
+        '200':
+          description: 儲存成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code:
+                    type: string
+                    example: save_options_success
+                  message:
+                    type: string
+                    example: 儲存成功
+                  data:
+                    nullable: true
+                    example: null
+
+  /revoke-google-oauth:
+    post:
+      operationId: revokeGoogleOauth
+      summary: 撤銷 Google OAuth 授權
+      description: |
+        撤銷 Google OAuth Token，刪除 wp_option 中的 youtube_oauth_token。
+        撤銷後 YoutubeService 的 is_authorized 變為 false。
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: 撤銷成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code:
+                    type: string
+                    example: revoke_google_oauth_success
+                  message:
+                    type: string
+                    example: 撤銷 Google OAuth 成功
+                  data:
+                    nullable: true
+                    example: null
+
+  # ===== Activities =====
+
+  /activities:
+    get:
+      operationId: getActivities
+      summary: 查詢活動列表
+      description: |
+        從所有活動提供商（目前僅 YouTube）取得活動列表。
+        支援 keyword（標題關鍵字）、last_n_days（未來 N 天）、id 篩選。
+        僅回傳排程時間在未來的可報名活動。
+      tags:
+        - Activity
+      parameters:
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 指定活動 ID（YouTube video ID）
+          example: yt001
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 篩選標題包含此關鍵字的活動
+          example: React
+        - name: last_n_days
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 篩選未來 N 天內的活動
+          example: 30
+      responses:
+        '200':
+          description: 活動列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ActivityDTO'
+
+  # ===== LIFF =====
+
+  /liff:
+    post:
+      operationId: postLiff
+      summary: 處理 LIFF 回調
+      description: |
+        LIFF App 前端取得 LINE 用戶 Profile 後，
+        將資料與 URL 參數傳送至後端 API。
+        後端觸發 power_funnel/liff_callback action 進行後續處理。
+        此端點不需要 WordPress 登入驗證。
+      tags:
+        - LINE
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiffRequest'
+      responses:
+        '200':
+          description: 回調成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: get liff data success
+                  data:
+                    nullable: true
+                    example: null
+
+  # ===== LINE Webhook =====
+
+  /line-callback:
+    post:
+      operationId: postLineCallback
+      summary: 處理 LINE Webhook
+      description: |
+        接收 LINE Platform 發送的 Webhook 事件，
+        驗證 X-Line-Signature 簽章後分發至對應 handler。
+        此端點不需要 WordPress 登入驗證。
+      tags:
+        - LINE
+      security: []
+      parameters:
+        - name: X-Line-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: LINE Webhook 簽章，用於驗證請求來源
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LineWebhookRequest'
+      responses:
+        '200':
+          description: Webhook 處理成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        '400':
+          description: 缺少簽章或簽章驗證失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: LINE 設定未完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    # ===== Error =====
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: 操作失敗
+
+    # ===== Settings Schemas =====
+
+    LineSettingDTO:
+      type: object
+      properties:
+        liff_id:
+          type: string
+          example: '1234'
+        liff_url:
+          type: string
+          example: https://liff.line.me/1234
+        channel_id:
+          type: string
+          example: CH01
+        channel_secret:
+          type: string
+          example: SEC01
+        channel_access_token:
+          type: string
+          example: TOKEN01
+
+    YoutubeSettingDTO:
+      type: object
+      properties:
+        clientId:
+          type: string
+          example: GCID01
+        clientSecret:
+          type: string
+          example: GCSECRET01
+        redirectUri:
+          type: string
+          description: OAuth Redirect URI（自動填入 site_url）
+          example: https://example.com/wp-admin/admin.php
+
+    GoogleOAuthStatus:
+      type: object
+      required: [isAuthorized, authUrl]
+      properties:
+        isAuthorized:
+          type: boolean
+          example: true
+        authUrl:
+          type: string
+          description: Google OAuth 授權 URL
+          example: https://accounts.google.com/o/oauth2/auth?...
+
+    OptionsData:
+      type: object
+      required: [line, youtube, googleOauth]
+      properties:
+        line:
+          $ref: '#/components/schemas/LineSettingDTO'
+        youtube:
+          $ref: '#/components/schemas/YoutubeSettingDTO'
+        googleOauth:
+          $ref: '#/components/schemas/GoogleOAuthStatus'
+
+    SaveOptionsRequest:
+      type: object
+      description: |
+        每個 key 對應 EOptionName 列舉值。
+        僅傳入需要更新的區段即可。googleOauth 為唯讀，傳入會被忽略。
+      properties:
+        line:
+          $ref: '#/components/schemas/LineSettingDTO'
+        youtube:
+          $ref: '#/components/schemas/YoutubeSettingDTO'
+
+    # ===== Activity Schemas =====
+
+    ActivityDTO:
+      type: object
+      required: [id, activity_provider_id, title, description, thumbnail_url, scheduled_start_time, meta]
+      properties:
+        id:
+          type: string
+          description: 活動 ID（YouTube video ID）
+          example: yt001
+        activity_provider_id:
+          type: string
+          description: 活動提供商 ID
+          example: youtube
+        title:
+          type: string
+          description: 活動標題
+          example: React 直播教學
+        description:
+          type: string
+          description: 活動描述
+          example: React 入門
+        thumbnail_url:
+          type: string
+          description: 活動縮圖 URL
+          example: https://i.ytimg.com/vi/yt001/default.jpg
+        scheduled_start_time:
+          type: integer
+          description: 排程開始時間（Unix timestamp）
+          example: 1774015200
+        meta:
+          type: object
+          description: 提供商特定的額外資料
+          additionalProperties: true
+
+    # ===== LIFF Schemas =====
+
+    LiffRequest:
+      type: object
+      required: [userId, isInClient, isLoggedIn]
+      properties:
+        userId:
+          type: string
+          description: LINE 用戶 ID
+          example: U1234
+        name:
+          type: string
+          description: LINE 用戶名稱
+          example: 小明
+        picture:
+          type: string
+          nullable: true
+          description: LINE 用戶頭像 URL
+          example: https://pic.example.com
+        os:
+          type: string
+          nullable: true
+          description: 裝置作業系統
+          example: iOS
+        version:
+          type: string
+          nullable: true
+          description: LIFF SDK 版本
+          example: '2.1'
+        lineVersion:
+          type: string
+          nullable: true
+          description: LINE 應用版本
+          example: '13.0.0'
+        isInClient:
+          type: boolean
+          description: 是否在 LINE 內建瀏覽器
+          example: true
+        isLoggedIn:
+          type: boolean
+          description: 是否已登入 LINE
+          example: true
+        urlParams:
+          type: object
+          description: LIFF URL 的 query parameters
+          properties:
+            promoLinkId:
+              type: string
+              description: 推廣連結 ID
+              example: '10'
+          additionalProperties: true
+
+    # ===== LINE Webhook Schemas =====
+
+    LineWebhookRequest:
+      type: object
+      description: LINE Platform Webhook request body（LINE 官方格式）
+      required: [events]
+      properties:
+        destination:
+          type: string
+          description: LINE Bot 的 user ID
+        events:
+          type: array
+          description: Webhook 事件陣列
+          items:
+            $ref: '#/components/schemas/LineWebhookEvent'
+
+    LineWebhookEvent:
+      type: object
+      description: LINE Webhook 事件（簡化版，完整定義參考 LINE 官方文件）
+      properties:
+        type:
+          type: string
+          description: 事件類型
+          enum: [message, postback, follow, unfollow, join, leave]
+          example: postback
+        webhookEventId:
+          type: string
+          description: Webhook 事件 ID
+        timestamp:
+          type: integer
+          description: 事件發生時間（Unix timestamp in milliseconds）
+        source:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [user, group, room]
+            userId:
+              type: string
+              example: U1234
+        postback:
+          type: object
+          description: Postback 事件資料（僅 type=postback 時存在）
+          properties:
+            data:
+              type: string
+              description: Postback data（JSON 字串）
+              example: '{"action":"register","activity_id":"yt001","promo_link_id":"10"}'
+        message:
+          type: object
+          description: 訊息事件資料（僅 type=message 時存在）
+          properties:
+            type:
+              type: string
+              enum: [text, image, video, audio, file, location, sticker]
+            text:
+              type: string
+              description: 文字訊息內容（僅 message.type=text 時存在）
+
+  securitySchemes:
+    WordPressNonce:
+      type: apiKey
+      in: header
+      name: X-WP-Nonce
+      description: WordPress REST API nonce for authentication
+
+security:
+  - WordPressNonce: []

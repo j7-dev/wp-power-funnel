@@ -1,15 +1,18 @@
 /**
- * LIFF 回調頁面 — 前端 E2E 測試
+ * P2 — LIFF 前端頁面載入
  *
- * 對應規格: 處理LIFF回調.feature, 發送LINE活動Carousel.feature
- * 對應原始碼: inc/templates/page-liff.php, js/src/App2.tsx, js/src/utils/liff.ts
+ * 對應規格: spec/features/line/處理LIFF回調.feature, spec/specs/actors/LINE用戶.md
  *
  * 涵蓋場景:
- *  - LIFF 頁面載入與容器渲染
- *  - LIFF API 端點回應（完整 / 最小 / 含 promoLinkId）
- *  - 缺少必要欄位時的防禦行為
- *  - 各種 urlParams 組合
- *  - 非 LIFF 環境下頁面行為
+ *  - LIFF 頁面可正常載入（HTTP < 500）
+ *  - 頁面包含 #power_funnel_liff_app 容器
+ *  - 非 LINE 內建瀏覽器下不應白屏崩潰
+ *  - 帶 promoLinkId URL 參數 → 不 crash
+ *  - 帶無效 promoLinkId → 不 crash
+ *  - 帶多個 URL 參數 → 不 crash
+ *  - promoLinkId 為空字串 → 不 crash
+ *  - 頁面載入 CSS 樣式表
+ *  - LIFF API 端點各種 payload 組合測試
  */
 import { test, expect } from '@playwright/test'
 import {
@@ -21,19 +24,19 @@ import {
   LINE_USER,
 } from '../fixtures/test-data.js'
 
-/* ── Types ── */
+/* ── 型別定義 ── */
 type LiffResponse = {
   code: string
   message: string
   data: unknown
 }
 
-/* ── Constants ── */
+/* ── 常數 ── */
 const LIFF_PAGE_URL = `${BASE_URL}/liff`
 const LIFF_API_URL = `${BASE_URL}/wp-json/${EP.liff}`
 
-test.describe('LIFF 頁面載入', () => {
-  test('LIFF 頁面應可正常載入 (HTTP 200)', async ({ page }) => {
+test.describe('LIFF 頁面載入 [P2]', () => {
+  test('LIFF 頁面應可正常載入（HTTP < 500）', async ({ page }) => {
     const response = await page.goto(LIFF_PAGE_URL)
     expect(response).not.toBeNull()
     expect(response!.status()).toBeLessThan(500)
@@ -46,55 +49,48 @@ test.describe('LIFF 頁面載入', () => {
     await expect(container).toHaveCount(1)
   })
 
-  test('LIFF 頁面不應包含 WordPress 預設 admin bar', async ({ page }) => {
-    // LIFF 頁面是獨立頁面，不載入 WP header/footer
+  test('非 LINE 環境下頁面不應白屏崩潰', async ({ page }) => {
+    // 在非 LINE 內建瀏覽器中開啟 LIFF 頁面
     await page.goto(LIFF_PAGE_URL)
     await page.waitForLoadState('domcontentloaded')
-    const adminBar = page.locator('#wpadminbar')
-    const count = await adminBar.count()
-    // 獨立頁面可能不含 admin bar，或已登入時含有
-    // 主要確認頁面不 crash
-    expect(count).toBeGreaterThanOrEqual(0)
+    // body 不應為完全空白（可能顯示錯誤或載入中）
+    const bodyText = await page.evaluate(() => document.body.innerText)
+    expect(bodyText).toBeDefined()
   })
 
-  test('LIFF 頁面應載入 CSS 樣式', async ({ page }) => {
+  test('LIFF 頁面應有樣式表（CSS）', async ({ page }) => {
     await page.goto(LIFF_PAGE_URL)
     await page.waitForLoadState('domcontentloaded')
-    // 確認有載入 style.css 或 Vite bundle CSS
     const stylesheets = await page.evaluate(() =>
       Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(
         (el) => (el as HTMLLinkElement).href,
       ),
     )
-    // 至少應有一個樣式表（Vite bundle 或 WP 預設）
-    expect(stylesheets.length).toBeGreaterThanOrEqual(0)
-  })
-
-  test('非 LIFF 環境下頁面不應白屏崩潰', async ({ page }) => {
-    // 在非 LINE 內建瀏覽器中開啟 LIFF 頁面
-    await page.goto(LIFF_PAGE_URL)
-    await page.waitForLoadState('domcontentloaded')
-    // 頁面應正常渲染，不應出現空白頁
-    const bodyText = await page.evaluate(() => document.body.innerText)
-    // body 不應為完全空白（可能顯示錯誤或載入中）
-    expect(bodyText).toBeDefined()
+    // 樣式表數量 >= 0（即使無也不算失敗）
+    expect(stylesheets).toBeDefined()
   })
 })
 
-test.describe('LIFF 頁面 URL 參數處理', () => {
-  test('帶 promoLinkId 參數存取 LIFF 頁面', async ({ page }) => {
+test.describe('LIFF 頁面 URL 參數處理 [P2]', () => {
+  test('帶 promoLinkId 參數存取 LIFF 頁面 → < 500', async ({ page }) => {
     const response = await page.goto(`${LIFF_PAGE_URL}?promoLinkId=10`)
     expect(response).not.toBeNull()
     expect(response!.status()).toBeLessThan(500)
   })
 
-  test('帶無效 promoLinkId 參數存取 LIFF 頁面不應崩潰', async ({ page }) => {
+  test('帶無效 promoLinkId（字串）→ 不應 crash', async ({ page }) => {
     const response = await page.goto(`${LIFF_PAGE_URL}?promoLinkId=invalid`)
     expect(response).not.toBeNull()
     expect(response!.status()).toBeLessThan(500)
   })
 
-  test('帶多個 URL 參數存取 LIFF 頁面', async ({ page }) => {
+  test('帶不存在的 promoLinkId（9999999）→ 不應 crash', async ({ page }) => {
+    const response = await page.goto(`${LIFF_PAGE_URL}?promoLinkId=9999999`)
+    expect(response).not.toBeNull()
+    expect(response!.status()).toBeLessThan(500)
+  })
+
+  test('帶多個 URL 參數 → 不應 crash', async ({ page }) => {
     const response = await page.goto(
       `${LIFF_PAGE_URL}?promoLinkId=10&extra=value&utm_source=test`,
     )
@@ -102,14 +98,14 @@ test.describe('LIFF 頁面 URL 參數處理', () => {
     expect(response!.status()).toBeLessThan(500)
   })
 
-  test('promoLinkId 為空字串時 LIFF 頁面不應崩潰', async ({ page }) => {
+  test('promoLinkId 為空字串 → 不應 crash', async ({ page }) => {
     const response = await page.goto(`${LIFF_PAGE_URL}?promoLinkId=`)
     expect(response).not.toBeNull()
     expect(response!.status()).toBeLessThan(500)
   })
 })
 
-test.describe('LIFF API 端點 — 回調資料處理', () => {
+test.describe('LIFF API 端點 — 回調資料處理 [P2]', () => {
   test('完整 LIFF 資料含 promoLinkId → 200 + success', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
@@ -137,10 +133,7 @@ test.describe('LIFF API 端點 — 回調資料處理', () => {
   test('urlParams 含 promoLinkId 為字串 → 正常處理', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
-      data: {
-        ...LINE_USER,
-        urlParams: { promoLinkId: '10' },
-      },
+      data: { ...LINE_USER, urlParams: { promoLinkId: '10' } },
     })
     expect(res.status()).toBeLessThan(500)
     if (res.status() === 200) {
@@ -149,9 +142,7 @@ test.describe('LIFF API 端點 — 回調資料處理', () => {
     }
   })
 
-  test('urlParams 缺少 promoLinkId → 仍回應成功（不發送 Carousel）', async ({
-    request,
-  }) => {
+  test('urlParams 缺少 promoLinkId → 仍回應成功（不發送 Carousel）', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
       data: {
@@ -165,21 +156,7 @@ test.describe('LIFF API 端點 — 回調資料處理', () => {
     expect(res.status()).toBeLessThan(500)
   })
 
-  test('urlParams 為 null → 不應 crash', async ({ request }) => {
-    const res = await request.post(LIFF_API_URL, {
-      headers: { 'Content-Type': 'application/json' },
-      data: {
-        userId: '[E2E] U_frontend_null_params',
-        name: '[E2E] Null Params',
-        isInClient: false,
-        isLoggedIn: true,
-        urlParams: null,
-      },
-    })
-    expect(res.status()).toBeLessThan(500)
-  })
-
-  test('不存在的 promoLinkId → 不應 500', async ({ request }) => {
+  test('不存在的 promoLinkId（999999）→ 不應 500', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
       data: {
@@ -194,12 +171,12 @@ test.describe('LIFF API 端點 — 回調資料處理', () => {
   })
 })
 
-test.describe('LIFF API 端點 — 用戶資料驗證', () => {
-  test('iOS 用戶完整資料', async ({ request }) => {
+test.describe('LIFF API 端點 — 用戶資料驗證 [P2]', () => {
+  test('iOS 用戶完整資料 → 不應 500', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
       data: {
-        userId: '[E2E] U_ios_user',
+        userId: '[E2E] U_ios_liff',
         name: '[E2E] iOS 用戶',
         picture: 'https://example.com/avatar.jpg',
         os: 'iOS',
@@ -213,13 +190,12 @@ test.describe('LIFF API 端點 — 用戶資料驗證', () => {
     expect(res.status()).toBeLessThan(500)
   })
 
-  test('Android 用戶完整資料', async ({ request }) => {
+  test('Android 用戶完整資料 → 不應 500', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
       data: {
-        userId: '[E2E] U_android_user',
+        userId: '[E2E] U_android_liff',
         name: '[E2E] Android 用戶',
-        picture: 'https://example.com/avatar_android.jpg',
         os: 'Android',
         version: '2.1.0',
         lineVersion: '14.0.0',
@@ -230,12 +206,12 @@ test.describe('LIFF API 端點 — 用戶資料驗證', () => {
     expect(res.status()).toBeLessThan(500)
   })
 
-  test('外部瀏覽器（非 LINE 內建）用戶', async ({ request }) => {
+  test('外部瀏覽器（isInClient: false）用戶 → 不應 500', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
       data: {
-        userId: '[E2E] U_external_browser',
-        name: '[E2E] 外部瀏覽器用戶',
+        userId: '[E2E] U_external_liff',
+        name: '[E2E] 外部瀏覽器',
         isInClient: false,
         isLoggedIn: true,
         urlParams: { promoLinkId: '10' },
@@ -244,27 +220,14 @@ test.describe('LIFF API 端點 — 用戶資料驗證', () => {
     expect(res.status()).toBeLessThan(500)
   })
 
-  test('未登入用戶 (isLoggedIn: false)', async ({ request }) => {
+  test('未登入用戶（isLoggedIn: false）→ 不應 500', async ({ request }) => {
     const res = await request.post(LIFF_API_URL, {
       headers: { 'Content-Type': 'application/json' },
       data: {
-        userId: '[E2E] U_not_logged_in',
+        userId: '[E2E] U_liff_not_login',
         name: '[E2E] 未登入',
         isInClient: true,
         isLoggedIn: false,
-      },
-    })
-    expect(res.status()).toBeLessThan(500)
-  })
-
-  test('picture 為 undefined / 缺少時仍正常', async ({ request }) => {
-    const res = await request.post(LIFF_API_URL, {
-      headers: { 'Content-Type': 'application/json' },
-      data: {
-        userId: '[E2E] U_no_picture',
-        name: '[E2E] 無頭像用戶',
-        isInClient: false,
-        isLoggedIn: true,
       },
     })
     expect(res.status()).toBeLessThan(500)

@@ -15,7 +15,7 @@ export default defineConfig({
 			origin: '*',
 		},
 		fs: {
-			allow: ['./', '../../packages'],
+			allow: ['./'],
 		},
 	},
 	build: {
@@ -59,10 +59,6 @@ export default defineConfig({
 	// },
 	resolve: {
 		alias: {
-			'@power/general': path.resolve(
-				__dirname,
-				'../../packages/general/index.ts',
-			),
 			'@': path.resolve(__dirname, 'js/src'),
 		},
 	},

@@ -1,0 +1,31 @@
+[ACTIVITY] LINE 報名活動流程
+
+[ACTOR] 管理員 -> {specs/actors/管理員.md}
+[ACTOR] LINE用戶 -> {specs/actors/LINE用戶.md}
+[ACTOR] LINE平台 -> {specs/actors/LINE平台.md}
+[ACTOR] YouTube_API -> {specs/actors/YouTube_API.md}
+[ACTOR] Google_OAuth -> {specs/actors/Google_OAuth.md}
+[ACTOR] WordPress -> {specs/actors/WordPress.md}
+
+[STEP:1] @管理員 {features/settings/儲存設定.feature}
+[STEP:2] @管理員 {features/settings/Google_OAuth授權.feature}
+[STEP:3] @管理員 {features/settings/查詢設定.feature}
+[STEP:4] @管理員 {features/activity/查詢活動列表.feature}
+[STEP:5] @管理員 {features/promo-link/建立推廣連結.feature}
+[STEP:6] @管理員 {features/promo-link/編輯推廣連結.feature}
+[STEP:7] @LINE用戶 {features/line/處理LIFF回調.feature}
+[STEP:8] @WordPress {features/line/發送LINE活動Carousel.feature}
+[STEP:9] @LINE平台 {features/line/處理LINE_Webhook.feature}
+[STEP:10] @LINE用戶 {features/registration/LINE報名活動.feature}
+[DECISION:10a] 用戶是否已報名過此活動？
+  [BRANCH:10a:已報名] @WordPress {features/registration/發送已報名通知.feature}
+  [BRANCH:10a:未報名] @WordPress {features/registration/建立報名紀錄.feature}
+[MERGE:10a]
+
+[STEP:11] @WordPress {features/registration/發送報名狀態LINE通知.feature}
+[DECISION:11a] 是否設定自動審核？
+  [BRANCH:11a:是] @WordPress {features/registration/自動審核報名.feature}
+  [BRANCH:11a:否] @管理員 {specs/ui/報名管理頁面.md}
+[MERGE:11a]
+
+[END]
