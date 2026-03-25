@@ -22,6 +22,11 @@
 			"J7\\PowerFunnel\\": "inc/classes/"
 		}
 	},
+	"autoload-dev": {
+		"psr-4": {
+			"J7\\PowerFunnel\\Tests\\": "tests/"
+		}
+	},
 	"config": {
 		"allow-plugins": {
 			"dealerdirect/phpcodesniffer-composer-installer": true,
@@ -41,7 +46,11 @@
 		"phpstan/phpstan": "@stable",
 		"php-stubs/woocommerce-stubs": "@stable",
 		"php-stubs/wordpress-stubs": "@stable",
-		"phpstan/extension-installer": "@stable"
+		"phpstan/extension-installer": "@stable",
+		"phpunit/phpunit": "^9.6",
+		"yoast/phpunit-polyfills": "^1.0",
+		"wp-phpunit/wp-phpunit": "^6.3",
+		"yoast/wp-test-utils": "^1.0"
 	},
 	"extra": {
 		"strauss": {
@@ -62,6 +71,9 @@
 	"scripts": {
 		"lint": "phpcs",
 		"analyse": "phpstan analyse inc --memory-limit=6G",
+		"test": "vendor/bin/phpunit",
+		"test:smoke": "vendor/bin/phpunit --group=smoke",
+		"test:happy": "vendor/bin/phpunit --group=happy",
 		"strauss:clean": "php bin/strauss-clean.php",
 		"strauss:run": "php bin/strauss-wrapper.php",
 		"rm:dir": "php bin/rm-dir.php",
