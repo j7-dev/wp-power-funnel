@@ -37,3 +37,6 @@ release/*
 /vendor/
 /vendor-prefixed/
 bin/strauss.phar
+
+# Testing
+.phpunit.result.cache
