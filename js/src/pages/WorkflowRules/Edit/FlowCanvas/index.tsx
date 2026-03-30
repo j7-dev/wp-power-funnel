@@ -17,7 +17,11 @@ import { nodeTypes } from './nodes'
 import { edgeTypes } from './edges'
 import useFlowActions from './hooks/useFlowActions'
 import { nodeDTOsToFlow, createEmptyFlow } from './utils/flowSerializer'
-import type { TNodeDTO, TNodeModule, TTriggerPoint } from '@/pages/WorkflowRules/types'
+import type {
+	TNodeDTO,
+	TNodeModule,
+	TTriggerPoint,
+} from '@/pages/WorkflowRules/types'
 import type { TFlowNodeData } from './types'
 import NodeDrawer from '../NodeDrawer'
 
@@ -26,6 +30,8 @@ type TFlowCanvasProps = {
 	nodeDTOs: TNodeDTO[]
 	/** 觸發點 */
 	triggerPoint: TTriggerPoint | ''
+	/** 觸發點標籤對照表（hook => 顯示名稱），由父元件從 API 取得並傳入 */
+	triggerPointLabelMap?: Record<string, string>
 }
 
 /**
@@ -42,13 +48,13 @@ export type TFlowCanvasRef = {
  * 負責渲染工作流的節點編輯器
  */
 const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
-	({ nodeDTOs, triggerPoint }, ref) => {
+	({ nodeDTOs, triggerPoint, triggerPointLabelMap = {} }, ref) => {
 		/** 從後端資料建立初始 flow */
 		const initialFlow = useMemo(() => {
 			if (nodeDTOs.length > 0) {
-				return nodeDTOsToFlow(nodeDTOs, triggerPoint)
+				return nodeDTOsToFlow(nodeDTOs, triggerPoint, triggerPointLabelMap)
 			}
-			return createEmptyFlow(triggerPoint)
+			return createEmptyFlow(triggerPoint, triggerPointLabelMap)
 		}, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 		const {
@@ -74,8 +80,8 @@ const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
 		useEffect(() => {
 			const newFlow =
 				nodeDTOs.length > 0
-					? nodeDTOsToFlow(nodeDTOs, triggerPoint)
-					: createEmptyFlow(triggerPoint)
+					? nodeDTOsToFlow(nodeDTOs, triggerPoint, triggerPointLabelMap)
+					: createEmptyFlow(triggerPoint, triggerPointLabelMap)
 			applyLayout(newFlow.nodes, newFlow.edges)
 		}, [triggerPoint]) // eslint-disable-line react-hooks/exhaustive-deps
 

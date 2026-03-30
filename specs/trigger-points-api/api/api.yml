@@ -1,0 +1,119 @@
+# Trigger Points API 規格
+# 查詢所有已註冊的觸發條件列表，供 WorkflowRule 編輯頁面的下拉選單使用
+# 資料來源：Repository::get_trigger_points()，經過 apply_filters 允許第三方擴充
+
+openapi: 3.0.0
+info:
+  title: Trigger Points API
+  version: 1.0.0
+  description: |
+    查詢 WorkflowRule 可用的觸發條件列表。
+    後端從 ETriggerPoint enum 取得預設觸發點，
+    再經 apply_filters('power_funnel/workflow_rule/trigger_points') 合併第三方擴充。
+    前端用於 WorkflowRule 編輯頁面的觸發條件下拉選單。
+
+servers:
+  - url: /wp-json/power-funnel
+    description: Power Funnel 自訂 REST API
+
+security:
+  - wpNonce: []
+
+paths:
+
+  /trigger-points:
+    get:
+      operationId: getTriggerPoints
+      summary: 查詢觸發條件列表
+      description: |
+        回傳所有已註冊的觸發條件（含預設 + 第三方透過 filter 擴充的）。
+        無需任何查詢參數，直接回傳完整列表。
+        對應後端 Repository::get_trigger_points()。
+      responses:
+        '200':
+          description: 查詢成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerPointsResponse'
+        '401':
+          description: 未授權的操作（未登入或 nonce 無效）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+
+  securitySchemes:
+    wpNonce:
+      type: apiKey
+      in: header
+      name: X-WP-Nonce
+      description: WordPress REST API nonce（wp_create_nonce('wp_rest')）
+
+  schemas:
+
+    TriggerPoint:
+      type: object
+      description: 觸發條件項目（對應 TriggerPointDTO）
+      required:
+        - hook
+        - name
+      properties:
+        hook:
+          type: string
+          description: 觸發點的 hook name（對應 ETriggerPoint value）
+          example: 'pf/trigger/registration_created'
+        name:
+          type: string
+          description: 觸發點的顯示名稱
+          example: '用戶報名後'
+
+    TriggerPointsResponse:
+      type: object
+      description: |
+        觸發條件列表回應。
+        遵循 Power Funnel API 回應格式。
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: string
+          description: 操作結果代碼
+          example: 'operation_success'
+        message:
+          type: string
+          description: 操作結果訊息
+          example: '操作成功'
+        data:
+          type: array
+          description: 觸發條件列表
+          items:
+            $ref: '#/components/schemas/TriggerPoint'
+
+    Error:
+      type: object
+      description: 錯誤回應格式
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: string
+          description: 錯誤代碼
+          example: 'rest_forbidden'
+        message:
+          type: string
+          description: 錯誤訊息
+          example: '未授權的操作'
+        data:
+          type: object
+          properties:
+            status:
+              type: integer
+              description: HTTP 狀態碼
+              example: 401

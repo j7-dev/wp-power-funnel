@@ -1,15 +1,7 @@
 import type { TFlowNode, TFlowNodeData } from '../types'
 import { FLOW_NODE_TYPE, ENTRANCE_NODE_ID, EXIT_NODE_ID } from '../types'
-import {
-	TRIGGER_POINT_LABELS,
-	type TNodeDTO,
-	type TTriggerPoint,
-} from '@/pages/WorkflowRules/types'
-import {
-	createEntranceNode,
-	createExitNode,
-	createEdge,
-} from './nodeFactory'
+import { type TNodeDTO, type TTriggerPoint } from '@/pages/WorkflowRules/types'
+import { createEntranceNode, createExitNode, createEdge } from './nodeFactory'
 import type { TFlowEdge } from '../types'
 
 /**
@@ -29,9 +21,7 @@ export const nodesToNodeDTOs = (nodes: TFlowNode[]): TNodeDTO[] => {
 				node_type: data.nodeType,
 				sort: index,
 				args: data.args ?? {},
-				...(data.matchCallback
-					? { match_callback: data.matchCallback }
-					: {}),
+				...(data.matchCallback ? { match_callback: data.matchCallback } : {}),
 			}
 		})
 }
@@ -42,14 +32,16 @@ export const nodesToNodeDTOs = (nodes: TFlowNode[]): TNodeDTO[] => {
  *
  * @param nodeDTOs 後端 NodeDTO 陣列
  * @param triggerPoint 觸發點
+ * @param labelMap 觸發點標籤對照表（hook => 顯示名稱），由父元件從 API 取得
  * @returns React Flow 節點與邊線
  */
 export const nodeDTOsToFlow = (
 	nodeDTOs: TNodeDTO[],
 	triggerPoint: TTriggerPoint | '',
+	labelMap: Record<string, string> = {},
 ): { nodes: TFlowNode[]; edges: TFlowEdge[] } => {
 	const triggerLabel = triggerPoint
-		? (TRIGGER_POINT_LABELS[triggerPoint] ?? triggerPoint)
+		? (labelMap[triggerPoint] ?? triggerPoint)
 		: '未設定觸發條件'
 
 	const entranceNode = createEntranceNode(triggerLabel, triggerPoint)
@@ -88,12 +80,14 @@ export const nodeDTOsToFlow = (
  * 建立空白的 Flow（只有 entrance + exit）
  *
  * @param triggerPoint 觸發點
+ * @param labelMap 觸發點標籤對照表（hook => 顯示名稱），由父元件從 API 取得
  * @returns 初始的節點與邊線
  */
 export const createEmptyFlow = (
 	triggerPoint: TTriggerPoint | '',
+	labelMap: Record<string, string> = {},
 ): { nodes: TFlowNode[]; edges: TFlowEdge[] } => {
-	return nodeDTOsToFlow([], triggerPoint)
+	return nodeDTOsToFlow([], triggerPoint, labelMap)
 }
 
 /**

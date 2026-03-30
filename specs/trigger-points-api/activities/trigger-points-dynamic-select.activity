@@ -1,0 +1,12 @@
+[ACTIVITY] 觸發條件下拉選單動態化
+[ACTOR] 管理員 -> {specs/actors/admin.md}
+[ACTOR] 系統 -> {specs/actors/system.md}
+
+[STEP:1] @管理員 {features/workflow-rule/query-trigger-points.feature}
+  管理員開啟 WorkflowRule 編輯頁面，前端向後端查詢可用的觸發條件列表
+
+[STEP:2] @系統 {features/workflow-rule/query-trigger-points.feature}
+  系統從 ETriggerPoint enum 取得預設觸發點，再經過 apply_filters 合併開發者擴充的觸發點，回傳完整列表
+
+[STEP:3] @管理員 {features/workflow-rule/query-trigger-points.feature}
+  管理員在觸發條件下拉選單中看到完整的選項列表，選擇一個觸發條件

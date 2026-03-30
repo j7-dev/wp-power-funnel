@@ -1,12 +1,9 @@
 import { Table, TableProps, Tag } from 'antd'
 import { TWorkflowRuleRecord } from '@/pages/WorkflowRules/types'
-import {
-	TRIGGER_POINT_LABELS,
-	type TTriggerPoint,
-} from '@/pages/WorkflowRules/types'
 import { ProductName } from 'antd-toolkit/wp'
 import { useNavigation } from '@refinedev/core'
 import dayjs from 'dayjs'
+import useTriggerPoints from '@/pages/WorkflowRules/hooks/useTriggerPoints'
 
 /** 狀態對應的 Tag 顏色 */
 const STATUS_COLOR_MAP: Record<string, string> = {
@@ -28,6 +25,7 @@ const STATUS_LABEL_MAP: Record<string, string> = {
  */
 const useColumns = () => {
 	const { edit } = useNavigation()
+	const { labelMap: triggerPointLabelMap } = useTriggerPoints()
 
 	const onClick = (record: TWorkflowRuleRecord) => () => {
 		edit('workflow-rules', record.id)
@@ -51,13 +49,9 @@ const useColumns = () => {
 			title: '觸發點',
 			dataIndex: 'trigger_point',
 			width: 160,
-			render: (value: TTriggerPoint | '') => {
+			render: (value: string) => {
 				if (!value) return <span className="text-gray-400">未設定</span>
-				return (
-					<Tag color="blue">
-						{TRIGGER_POINT_LABELS[value] ?? value}
-					</Tag>
-				)
+				return <Tag color="blue">{triggerPointLabelMap[value] ?? value}</Tag>
 			},
 		},
 		{

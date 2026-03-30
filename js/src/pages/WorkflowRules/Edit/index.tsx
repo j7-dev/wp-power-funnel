@@ -4,21 +4,11 @@ import { HttpError, useParsed } from '@refinedev/core'
 import { toFormData, Heading } from 'antd-toolkit'
 import { notificationProps } from 'antd-toolkit/refine'
 import { Form, Input, Select, Spin } from 'antd'
-import {
-	TWorkflowRuleRecord,
-	TRIGGER_POINT,
-	TRIGGER_POINT_LABELS,
-	type TTriggerPoint,
-} from '@/pages/WorkflowRules/types'
+import { TWorkflowRuleRecord } from '@/pages/WorkflowRules/types'
 import FlowCanvas, { type TFlowCanvasRef } from './FlowCanvas'
+import useTriggerPoints from '@/pages/WorkflowRules/hooks/useTriggerPoints'
 
 const { Item } = Form
-
-/** 觸發點下拉選項 */
-const TRIGGER_POINT_OPTIONS = Object.values(TRIGGER_POINT).map((value) => ({
-	label: TRIGGER_POINT_LABELS[value],
-	value,
-}))
 
 /**
  * 自動化規則編輯頁面
@@ -27,13 +17,14 @@ const TRIGGER_POINT_OPTIONS = Object.values(TRIGGER_POINT).map((value) => ({
 const EditComponent = () => {
 	const { id } = useParsed()
 	const flowRef = useRef<TFlowCanvasRef>(null)
+	const {
+		options: triggerPointOptions,
+		labelMap: triggerPointLabelMap,
+		isLoading: triggerPointsLoading,
+	} = useTriggerPoints()
 
 	const { formProps, form, saveButtonProps, query, mutation, onFinish } =
-		useForm<
-			TWorkflowRuleRecord,
-			HttpError,
-			Partial<TWorkflowRuleRecord>
-		>({
+		useForm<TWorkflowRuleRecord, HttpError, Partial<TWorkflowRuleRecord>>({
 			action: 'edit',
 			resource: 'posts',
 			id,
@@ -63,8 +54,7 @@ const EditComponent = () => {
 
 	/** 監聽 trigger_point 變化 */
 	const triggerPoint = Form.useWatch('trigger_point', form) as
-		| TTriggerPoint
-		| ''
+		| string
 		| undefined
 
 	return (
@@ -74,9 +64,7 @@ const EditComponent = () => {
 				title={
 					<>
 						{record?.name}{' '}
-						<span className="text-gray-400 text-xs">
-							#{record?.id}
-						</span>
+						<span className="text-gray-400 text-xs">#{record?.id}</span>
 					</>
 				}
 				headerButtons={() => null}
@@ -93,18 +81,13 @@ const EditComponent = () => {
 					<Form {...formProps} layout="vertical">
 						<Heading>基本設定</Heading>
 						<div className="grid grid-cols-1 xl:grid-cols-2 gap-x-8 mb-8">
-							<Item
-								name={['name']}
-								label="規則名稱"
-							>
+							<Item name={['name']} label="規則名稱">
 								<Input allowClear placeholder="輸入自動化規則名稱" />
 							</Item>
-							<Item
-								name={['trigger_point']}
-								label="觸發條件"
-							>
+							<Item name={['trigger_point']} label="觸發條件">
 								<Select
-									options={TRIGGER_POINT_OPTIONS}
+									options={triggerPointOptions}
+									loading={triggerPointsLoading}
 									placeholder="選擇觸發條件"
 									allowClear
 								/>
@@ -117,11 +100,8 @@ const EditComponent = () => {
 						<FlowCanvas
 							ref={flowRef}
 							nodeDTOs={record.nodes ?? []}
-							triggerPoint={
-								(triggerPoint ?? record.trigger_point ?? '') as
-									| TTriggerPoint
-									| ''
-							}
+							triggerPoint={triggerPoint ?? record.trigger_point ?? ''}
+							triggerPointLabelMap={triggerPointLabelMap}
 						/>
 					)}
 				</Spin>

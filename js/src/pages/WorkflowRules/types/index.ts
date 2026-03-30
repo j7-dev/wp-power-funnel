@@ -32,20 +32,10 @@ export const NODE_TYPE = {
 export type TNodeType = (typeof NODE_TYPE)[keyof typeof NODE_TYPE]
 
 /**
- * 觸發點列舉
- * 對應後端 ETriggerPoint enum
+ * 觸發點型別
+ * 改為 string，由後端 API 動態取得，不再於前端硬編碼
  */
-export const TRIGGER_POINT = {
-	REGISTRATION_CREATED: 'pf/trigger/registration_created',
-} as const
-
-export type TTriggerPoint =
-	(typeof TRIGGER_POINT)[keyof typeof TRIGGER_POINT]
-
-/** 觸發點標籤對照 */
-export const TRIGGER_POINT_LABELS: Record<TTriggerPoint, string> = {
-	[TRIGGER_POINT.REGISTRATION_CREATED]: '用戶報名後',
-}
+export type TTriggerPoint = string
 
 /** 節點模組標籤對照 */
 export const NODE_MODULE_LABELS: Record<TNodeModule, string> = {
@@ -110,7 +100,7 @@ export type TWorkflowRuleRecord = {
 	/** 作者 ID */
 	author: number
 	/** 觸發點 hook name */
-	trigger_point: TTriggerPoint | ''
+	trigger_point: TTriggerPoint
 	/** 節點 DTO 陣列 */
 	nodes: TNodeDTO[]
 	/** 文章層級 */

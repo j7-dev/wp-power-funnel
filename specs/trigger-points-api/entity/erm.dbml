@@ -1,0 +1,12 @@
+// Trigger Points API - Entity Model
+// 此功能不涉及資料庫操作，觸發點來自 PHP ETriggerPoint enum + apply_filters
+// 僅記錄資料結構供參考
+
+// TriggerPoint 為運行時資料結構（非持久化），來自 ETriggerPoint enum + apply_filters
+// 不對應資料庫 Table，以 Enum 形式記錄預設值
+
+Enum trigger_point_hook {
+  'pf/trigger/registration_created'  [note: '用戶報名後（預設，來自 ETriggerPoint enum）']
+
+  Note: '觸發點 hook name。預設值來自 ETriggerPoint enum，可透過 apply_filters 擴充。'
+}
