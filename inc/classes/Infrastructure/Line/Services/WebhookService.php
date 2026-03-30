@@ -89,7 +89,11 @@ final class WebhookService extends ApiBase {
 
 			$action = ( new EventWebhookHelper( $event) )->get_action();
 
+			// 觸發「type/action」hook（現有邏輯，含 postback action）
 			\do_action( "power_funnel/line/webhook/{$event->getType()}/{$action?->value}", $event );
+
+			// 新增：觸發「type-only」hook，供 TriggerPointService 監聽 follow/unfollow/message 等事件
+			\do_action( "power_funnel/line/webhook/{$event->getType()}", $event );
 		}
 
 		return new \WP_REST_Response( [ 'status' => 'ok' ], 200 );

@@ -7,6 +7,15 @@ namespace J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule;
 use J7\PowerFunnel\Contracts\DTOs\WorkflowRuleDTO;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\BaseNodeDefinition;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\EmailNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\SmsNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\LineNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\WebhookNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\WaitNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\WaitUntilNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\TimeWindowNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\YesNoBranchNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\SplitBranchNode;
+use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\TagUserNode;
 
 /** Class Register */
 final class Register {
@@ -51,8 +60,13 @@ final class Register {
 			[
 				'type'              => 'string',
 				'single'            => true,
-				'show_in_rest'      => true,
-				'sanitize_callback' => 'sanitize_text_field',
+				'show_in_rest'      => [
+					'schema' => [
+						'type'        => 'string',
+						'description' => '觸發點設定：純字串（hook 名稱）或 JSON 字串（{hook, params} 物件）',
+					],
+				],
+				'sanitize_callback' => [ __CLASS__, 'sanitize_trigger_point' ],
 				'auth_callback'     => static fn() => \current_user_can( 'edit_posts' ),
 			]
 		);
@@ -91,6 +105,34 @@ final class Register {
 		return self::POST_TYPE;
 	}
 
+	/**
+	 * 清理 trigger_point meta 值
+	 * 支援舊版純字串格式與新版 JSON 物件格式 {hook: string, params: {...}}
+	 *
+	 * @param mixed $value 待清理的值
+	 * @return string 清理後的字串
+	 */
+	public static function sanitize_trigger_point( mixed $value ): string {
+		if (\is_array($value)) {
+			// 新版物件格式：序列化為 JSON 字串
+			$hook   = isset($value['hook']) && \is_string($value['hook']) ? \sanitize_text_field($value['hook']) : '';
+			$params = isset($value['params']) && \is_array($value['params']) ? \array_map('sanitize_text_field', $value['params']) : [];
+			return (string) \wp_json_encode([ 'hook' => $hook, 'params' => $params ]);
+		}
+		if (\is_string($value)) {
+			// 嘗試解析 JSON 字串格式
+			$decoded = \json_decode($value, true);
+			if (\is_array($decoded)) {
+				$hook   = isset($decoded['hook']) && \is_string($decoded['hook']) ? \sanitize_text_field($decoded['hook']) : '';
+				$params = isset($decoded['params']) && \is_array($decoded['params']) ? $decoded['params'] : [];
+				return (string) \wp_json_encode([ 'hook' => $hook, 'params' => $params ]);
+			}
+			// 舊版純字串格式
+			return \sanitize_text_field($value);
+		}
+		return '';
+	}
+
 
 	/** @return bool 是否為活動報名 post */
 	public static function match( \WP_Post $post ): bool {
@@ -115,6 +157,15 @@ final class Register {
 	public static function register_default_node_definitions( array $node_definitions ): array {
 		$definitions = [
 			new EmailNode(),
+			new SmsNode(),
+			new LineNode(),
+			new WebhookNode(),
+			new WaitNode(),
+			new WaitUntilNode(),
+			new TimeWindowNode(),
+			new YesNoBranchNode(),
+			new SplitBranchNode(),
+			new TagUserNode(),
 		];
 		foreach ($definitions as $definition) {
 			$node_definitions[ $definition->id ] = $definition;

@@ -12,12 +12,64 @@ namespace J7\PowerFunnel\Shared\Enums;
 enum ETriggerPoint : string {
 	private const PREFIX = 'pf/trigger/';
 
+	// ========== P0: 報名狀態觸發點 ==========
+
+	/** @deprecated 保留向後相容，新觸發點請使用 REGISTRATION_APPROVED */
 	case REGISTRATION_CREATED = self::PREFIX . 'registration_created';
+
+	case REGISTRATION_APPROVED  = self::PREFIX . 'registration_approved';
+	case REGISTRATION_REJECTED  = self::PREFIX . 'registration_rejected';
+	case REGISTRATION_CANCELLED = self::PREFIX . 'registration_cancelled';
+	case REGISTRATION_FAILED    = self::PREFIX . 'registration_failed';
+
+	// ========== P1: LINE 互動觸發點 ==========
+
+	case LINE_FOLLOWED         = self::PREFIX . 'line_followed';
+	case LINE_UNFOLLOWED       = self::PREFIX . 'line_unfollowed';
+	case LINE_MESSAGE_RECEIVED = self::PREFIX . 'line_message_received';
+
+	// ========== P2: 工作流引擎觸發點 ==========
+
+	case WORKFLOW_COMPLETED = self::PREFIX . 'workflow_completed';
+	case WORKFLOW_FAILED    = self::PREFIX . 'workflow_failed';
+
+	// ========== P3: 活動時間觸發點 ==========
+
+	case ACTIVITY_STARTED      = self::PREFIX . 'activity_started';
+	case ACTIVITY_BEFORE_START = self::PREFIX . 'activity_before_start';
+
+	/** 枚舉存根：活動已結束（目前無結束時間資料來源，僅列出供前端顯示） */
+	case ACTIVITY_ENDED = self::PREFIX . 'activity_ended';
+
+	// ========== P3: 用戶行為觸發點 ==========
+
+	case USER_TAGGED = self::PREFIX . 'user_tagged';
+
+	/** 枚舉存根：推廣連結被點擊（目前無點擊追蹤機制，僅列出供前端顯示） */
+	case PROMO_LINK_CLICKED = self::PREFIX . 'promo_link_clicked';
 
 	/** 標籤 */
 	public function label(): string {
 		$mapper = [
-			self::REGISTRATION_CREATED->value => '用戶報名後',
+			self::REGISTRATION_CREATED->value   => '用戶報名後（舊）',
+			self::REGISTRATION_APPROVED->value  => '用戶報名審核通過後',
+			self::REGISTRATION_REJECTED->value  => '用戶報名被拒絕後',
+			self::REGISTRATION_CANCELLED->value => '用戶取消報名後',
+			self::REGISTRATION_FAILED->value    => '用戶報名失敗後',
+
+			self::LINE_FOLLOWED->value          => '用戶關注 LINE 官方帳號後',
+			self::LINE_UNFOLLOWED->value        => '用戶取消關注 LINE 官方帳號後',
+			self::LINE_MESSAGE_RECEIVED->value  => '收到 LINE 訊息後',
+
+			self::WORKFLOW_COMPLETED->value     => '工作流完成後',
+			self::WORKFLOW_FAILED->value        => '工作流失敗後',
+
+			self::ACTIVITY_STARTED->value       => '活動開始時',
+			self::ACTIVITY_BEFORE_START->value  => '活動開始前',
+			self::ACTIVITY_ENDED->value         => '活動結束後',
+
+			self::USER_TAGGED->value            => '用戶被貼標籤後',
+			self::PROMO_LINK_CLICKED->value     => '推廣連結被點擊後',
 		];
 		return $mapper[ $this->value ];
 	}

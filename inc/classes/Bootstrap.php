@@ -30,6 +30,13 @@ final class Bootstrap {
 		Applications\ActivityApi::register_hooks();
 		Applications\OptionApi::register_hooks();
 		Applications\TriggerPointApi::register_hooks();
+		Applications\NodeDefinitionApi::register_hooks();
+		Domains\Workflow\Services\TriggerPointService::register_hooks();
+		Domains\Workflow\Services\ActivitySchedulerService::register_hooks();
+
+		// 在 init priority=99 時掛載所有已發布 WorkflowRule 的 hook 監聽器
+		// priority=99 確保 CPT 與 meta 已先完成註冊
+		\add_action( 'init', [ Infrastructure\Repositories\WorkflowRule\Register::class, 'register_workflow_rules' ], 99 );
 
 		\add_action( 'admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ] );
 	}
