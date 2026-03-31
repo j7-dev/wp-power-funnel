@@ -22,7 +22,11 @@ enum ENode: string {
 	case SPILT_BRANCH  = 'split_branch';
 	case TAG_USER      = 'tag_user';
 
-	/**  @return string 標籤 */
+	/**
+	 * @deprecated 請改用 BaseNodeDefinition::$name 屬性
+	 *
+	 * @return string 標籤
+	 */
 	public function label(): string {
 		return match ( $this ) {
 			self::EMAIL => '傳送 Email',
@@ -38,7 +42,11 @@ enum ENode: string {
 		};
 	}
 
-	/**  @return string 說明 */
+	/**
+	 * @deprecated 請改用 BaseNodeDefinition::$description 屬性
+	 *
+	 * @return string 說明
+	 */
 	public function description(): string {
 		return match ( $this ) {
 			self::EMAIL => '傳送 Email',
@@ -55,6 +63,8 @@ enum ENode: string {
 	}
 
 	/**
+	 * @deprecated 請改用 BaseNodeDefinition::$icon 屬性
+	 *
 	 * @return string Icon url
 	 * @see https://www.svgrepo.com/
 	 */
@@ -62,7 +72,11 @@ enum ENode: string {
 		return Plugin::$url . "/inc/assets/icons/{$this->value}.svg";
 	}
 
-	/**  @return ENodeType Node 類型 */
+	/**
+	 * @deprecated 請改用 BaseNodeDefinition::$type 屬性
+	 *
+	 * @return ENodeType Node 類型
+	 */
 	public function type(): ENodeType {
 		return match ( $this ) {
 			self::EMAIL,
@@ -78,7 +92,11 @@ enum ENode: string {
 		};
 	}
 
-	/**  @return array<string, FormFieldDTO> Node 欄位資料 */
+	/**
+	 * @deprecated 請改用 BaseNodeDefinition::$form_fields 屬性
+	 *
+	 * @return array<string, FormFieldDTO> Node 欄位資料
+	 */
 	public function form_fields(): array {
 		// TODO
 		return [];

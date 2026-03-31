@@ -40,6 +40,54 @@ final class EmailNode extends BaseNodeDefinition {
 	/** @var array<string> Email headers >  */
 	private static array $headers = [ 'Content-Type: text/html; charset=UTF-8' ];
 
+	/** Constructor */
+	public function __construct() {
+		parent::__construct();
+		$this->form_fields = [
+			'recipient'      => new FormFieldDTO(
+				[
+					'name'        => 'recipient',
+					'label'       => '收件人',
+					'type'        => 'text',
+					'required'    => true,
+					'placeholder' => 'user@example.com',
+					'description' => '輸入收件人的 Email 地址',
+					'sort'        => 0,
+				]
+			),
+			'subject_tpl'    => new FormFieldDTO(
+				[
+					'name'        => 'subject_tpl',
+					'label'       => '主旨',
+					'type'        => 'text',
+					'required'    => true,
+					'placeholder' => 'Email 主旨',
+					'sort'        => 1,
+				]
+			),
+			'content_tpl'    => new FormFieldDTO(
+				[
+					'name'     => 'content_tpl',
+					'label'    => '內文',
+					'type'     => 'template_editor',
+					'required' => true,
+					'sort'     => 2,
+				]
+			),
+			'message_tpl_id' => new FormFieldDTO(
+				[
+					'name'        => 'message_tpl_id',
+					'label'       => '訊息模板',
+					'type'        => 'select',
+					'required'    => false,
+					'description' => '選擇訊息模板時，將覆蓋主旨與內文',
+					'sort'        => 3,
+					'depends_on'  => [],
+				]
+			),
+		];
+	}
+
 
 
 	/**

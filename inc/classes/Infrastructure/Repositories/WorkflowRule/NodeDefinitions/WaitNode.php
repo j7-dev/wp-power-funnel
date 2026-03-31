@@ -37,6 +37,52 @@ final class WaitNode extends BaseNodeDefinition {
 
 	// endregion 前端顯示屬性
 
+	/** Constructor */
+	public function __construct() {
+		parent::__construct();
+		$this->form_fields = [
+			'duration' => new FormFieldDTO(
+				[
+					'name'        => 'duration',
+					'label'       => '等待時間',
+					'type'        => 'number',
+					'required'    => true,
+					'placeholder' => '1',
+					'sort'        => 0,
+					'validation'  => [
+						[
+							'rule'    => 'min',
+							'value'   => 1,
+							'message' => '等待時間必須大於 0',
+						],
+					],
+				]
+			),
+			'unit'     => new FormFieldDTO(
+				[
+					'name'     => 'unit',
+					'label'    => '時間單位',
+					'type'     => 'select',
+					'required' => true,
+					'sort'     => 1,
+					'options'  => [
+						[
+							'value' => 'minutes',
+							'label' => '分鐘',
+						],
+						[
+							'value' => 'hours',
+							'label' => '小時',
+						],
+						[
+							'value' => 'days',
+							'label' => '天',
+						],
+					],
+				]
+			),
+		];
+	}
 
 	/**
 	 * 執行回調
