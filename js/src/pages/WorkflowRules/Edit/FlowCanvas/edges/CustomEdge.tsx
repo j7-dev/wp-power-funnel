@@ -7,11 +7,7 @@ import {
 	type EdgeProps,
 } from '@xyflow/react'
 import { PlusCircleOutlined } from '@ant-design/icons'
-import {
-	NODE_MODULE,
-	NODE_MODULE_LABELS,
-	type TNodeModule,
-} from '@/pages/WorkflowRules/types'
+import type { TNodeDefinition } from '@/pages/WorkflowRules/types'
 import './styles.css'
 
 type TCustomEdgeProps = EdgeProps & {
@@ -20,17 +16,16 @@ type TCustomEdgeProps = EdgeProps & {
 		onAddNode?: (
 			sourceId: string,
 			targetId: string,
-			nodeModule: TNodeModule,
+			nodeModule: string,
 		) => void
+		/** 節點定義列表（從 API 取得） */
+		nodeDefinitions?: TNodeDefinition[]
 	}
 }
 
-/** 所有可用的節點模組清單 */
-const ALL_NODE_MODULES = Object.values(NODE_MODULE) as TNodeModule[]
-
 /**
  * 自訂邊線元件
- * 中間顯示 + 按鈕，點擊後彈出節點類型選單
+ * 中間顯示 + 按鈕，點擊後彈出節點類型選單（由 API 驅動）
  */
 const CustomEdge = memo((props: TCustomEdgeProps) => {
 	const { id, source, target, data, markerEnd } = props
@@ -39,6 +34,8 @@ const CustomEdge = memo((props: TCustomEdgeProps) => {
 	const iconRef = useRef<HTMLDivElement>(null)
 
 	const [edgePath, labelX, labelY] = getBezierPath(props)
+
+	const nodeDefinitions = data?.nodeDefinitions ?? []
 
 	/** 監聽外部點擊關閉選單 */
 	useEffect(() => {
@@ -68,7 +65,7 @@ const CustomEdge = memo((props: TCustomEdgeProps) => {
 	}, [isMenuOpen])
 
 	const handleSelectModule = useCallback(
-		(nodeModule: TNodeModule) => {
+		(nodeModule: string) => {
 			data?.onAddNode?.(source, target, nodeModule)
 			setIsMenuOpen(false)
 		},
@@ -118,14 +115,21 @@ const CustomEdge = memo((props: TCustomEdgeProps) => {
 					ref={toolbarRef}
 					className="pf-edge-menu"
 				>
-					{ALL_NODE_MODULES.map((nodeModule) => (
+					{nodeDefinitions.map((def) => (
 						<button
 							type="button"
-							key={nodeModule}
+							key={def.id}
 							className="pf-edge-menu__item"
-							onClick={() => handleSelectModule(nodeModule)}
+							onClick={() => handleSelectModule(def.id)}
 						>
-							{NODE_MODULE_LABELS[nodeModule]}
+							{def.icon && (
+								<img
+									src={def.icon}
+									alt={def.name}
+									className="inline-block w-4 h-4 mr-2"
+								/>
+							)}
+							{def.name}
 						</button>
 					))}
 				</div>

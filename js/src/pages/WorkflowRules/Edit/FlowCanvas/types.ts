@@ -1,13 +1,13 @@
 import type { Node, Edge } from '@xyflow/react'
-import type { TNodeModule, TNodeType } from '@/pages/WorkflowRules/types'
+import type { TNodeType } from '@/pages/WorkflowRules/types'
 
 /**
  * React Flow 節點 data 結構
  * 用於 ActionNode 的自訂資料
  */
 export type TFlowNodeData = {
-	/** 節點模組名稱 */
-	nodeModule: TNodeModule
+	/** 節點模組名稱（對應 NodeDefinition ID） */
+	nodeModule: string
 	/** 節點類型 */
 	nodeType: TNodeType
 	/** 節點顯示標籤 */

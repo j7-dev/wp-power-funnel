@@ -7,6 +7,7 @@ import { Form, Input, Select, Spin } from 'antd'
 import { TWorkflowRuleRecord } from '@/pages/WorkflowRules/types'
 import FlowCanvas, { type TFlowCanvasRef } from './FlowCanvas'
 import useTriggerPoints from '@/pages/WorkflowRules/hooks/useTriggerPoints'
+import useNodeDefinitions from '@/pages/WorkflowRules/hooks/useNodeDefinitions'
 
 const { Item } = Form
 
@@ -22,6 +23,11 @@ const EditComponent = () => {
 		labelMap: triggerPointLabelMap,
 		isLoading: triggerPointsLoading,
 	} = useTriggerPoints()
+
+	const {
+		definitions: nodeDefinitions,
+		definitionsMap: nodeDefinitionsMap,
+	} = useNodeDefinitions()
 
 	const { formProps, form, saveButtonProps, query, mutation, onFinish } =
 		useForm<TWorkflowRuleRecord, HttpError, Partial<TWorkflowRuleRecord>>({
@@ -52,7 +58,7 @@ const EditComponent = () => {
 		)
 	}, [form, onFinish])
 
-	/** 監聽 trigger_point 變化 */
+	/** 監聯 trigger_point 變化 */
 	const triggerPoint = Form.useWatch('trigger_point', form) as
 		| string
 		| undefined
@@ -102,6 +108,8 @@ const EditComponent = () => {
 							nodeDTOs={record.nodes ?? []}
 							triggerPoint={triggerPoint ?? record.trigger_point ?? ''}
 							triggerPointLabelMap={triggerPointLabelMap}
+							nodeDefinitionsMap={nodeDefinitionsMap}
+							nodeDefinitions={nodeDefinitions}
 						/>
 					)}
 				</Spin>

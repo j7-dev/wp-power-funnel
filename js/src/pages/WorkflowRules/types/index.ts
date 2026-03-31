@@ -2,25 +2,6 @@
 import { TPostStatus } from 'antd-toolkit/wp'
 
 /**
- * 節點模組列舉
- * 對應後端 ENode enum
- */
-export const NODE_MODULE = {
-	EMAIL: 'email',
-	SMS: 'sms',
-	LINE: 'line',
-	WEBHOOK: 'webhook',
-	WAIT: 'wait',
-	WAIT_UNTIL: 'wait_until',
-	TIME_WINDOW: 'time_window',
-	YES_NO_BRANCH: 'yes_no_branch',
-	SPLIT_BRANCH: 'split_branch',
-	TAG_USER: 'tag_user',
-} as const
-
-export type TNodeModule = (typeof NODE_MODULE)[keyof typeof NODE_MODULE]
-
-/**
  * 節點類型列舉
  * 對應後端 ENodeType enum
  */
@@ -37,33 +18,89 @@ export type TNodeType = (typeof NODE_TYPE)[keyof typeof NODE_TYPE]
  */
 export type TTriggerPoint = string
 
-/** 節點模組標籤對照 */
-export const NODE_MODULE_LABELS: Record<TNodeModule, string> = {
-	[NODE_MODULE.EMAIL]: '傳送 Email',
-	[NODE_MODULE.SMS]: '傳送 SMS',
-	[NODE_MODULE.LINE]: '傳送 LINE 訊息',
-	[NODE_MODULE.WEBHOOK]: '發送 Webhook 通知',
-	[NODE_MODULE.WAIT]: '等待',
-	[NODE_MODULE.WAIT_UNTIL]: '等待至',
-	[NODE_MODULE.TIME_WINDOW]: '等待至時間窗口',
-	[NODE_MODULE.YES_NO_BRANCH]: '是/否分支',
-	[NODE_MODULE.SPLIT_BRANCH]: '分支',
-	[NODE_MODULE.TAG_USER]: '標籤用戶',
+// region NodeDefinition API 型別
+
+/** 表單欄位類型 */
+export type TFormFieldType =
+	| 'text'
+	| 'number'
+	| 'select'
+	| 'textarea'
+	| 'template_editor'
+	| 'switch'
+	| 'date'
+	| 'json'
+
+/** select 類型選項 */
+export type TSelectOption = {
+	value: string
+	label: string
 }
 
-/** 節點模組對應類型 */
-export const NODE_MODULE_TYPE_MAP: Record<TNodeModule, TNodeType> = {
-	[NODE_MODULE.EMAIL]: NODE_TYPE.SEND_MESSAGE,
-	[NODE_MODULE.SMS]: NODE_TYPE.SEND_MESSAGE,
-	[NODE_MODULE.LINE]: NODE_TYPE.SEND_MESSAGE,
-	[NODE_MODULE.WEBHOOK]: NODE_TYPE.SEND_MESSAGE,
-	[NODE_MODULE.WAIT]: NODE_TYPE.ACTION,
-	[NODE_MODULE.WAIT_UNTIL]: NODE_TYPE.ACTION,
-	[NODE_MODULE.TIME_WINDOW]: NODE_TYPE.ACTION,
-	[NODE_MODULE.YES_NO_BRANCH]: NODE_TYPE.ACTION,
-	[NODE_MODULE.SPLIT_BRANCH]: NODE_TYPE.ACTION,
-	[NODE_MODULE.TAG_USER]: NODE_TYPE.ACTION,
+/** 驗證規則 */
+export type TValidationRule = {
+	rule: string
+	value: unknown
+	message: string
 }
+
+/** 條件顯示規則 */
+export type TDependsOn = {
+	field: string
+	operator: 'equals' | 'not_equals' | 'empty' | 'not_empty'
+	value: unknown
+}
+
+/** 表單欄位定義（對應後端 FormFieldDTO） */
+export type TFormField = {
+	/** 欄位 key，對應 NodeDTO.args 的 key */
+	name: string
+	/** 顯示標籤 */
+	label: string
+	/** 欄位類型 */
+	type: TFormFieldType
+	/** 是否必填 */
+	required: boolean
+	/** 預設值 */
+	default_value?: unknown
+	/** placeholder 文字 */
+	placeholder?: string
+	/** 欄位說明（tooltip） */
+	description?: string
+	/** select 類型的選項 */
+	options?: TSelectOption[]
+	/** 額外驗證規則 */
+	validation?: TValidationRule[]
+	/** 欄位排序 */
+	sort: number
+	/** 條件顯示規則 */
+	depends_on?: TDependsOn[]
+}
+
+/** 節點定義（對應後端 BaseNodeDefinition::to_array()） */
+export type TNodeDefinition = {
+	/** 節點唯一識別碼 */
+	id: string
+	/** 節點名稱 */
+	name: string
+	/** 節點描述 */
+	description: string
+	/** 節點圖示 SVG URL */
+	icon: string
+	/** 節點分類 */
+	type: TNodeType
+	/** 節點表單欄位定義 */
+	form_fields: TFormField[]
+}
+
+/** 節點定義列表 API 回應型別 */
+export type TNodeDefinitionsResponse = {
+	code: string
+	message: string
+	data: TNodeDefinition[]
+}
+
+// endregion NodeDefinition API 型別
 
 /**
  * 後端 NodeDTO 結構
@@ -71,7 +108,7 @@ export const NODE_MODULE_TYPE_MAP: Record<TNodeModule, TNodeType> = {
  */
 export type TNodeDTO = {
 	/** 節點模組名稱 */
-	node_module: TNodeModule
+	node_module: string
 	/** 節點類型 */
 	node_type: TNodeType
 	/** 排序序號 */

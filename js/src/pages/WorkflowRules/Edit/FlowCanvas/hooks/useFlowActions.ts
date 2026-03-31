@@ -3,7 +3,7 @@ import type { TFlowNode, TFlowEdge, TFlowNodeData } from '../types'
 import { ENTRANCE_NODE_ID, EXIT_NODE_ID } from '../types'
 import { insertNodeBetween } from '../utils/nodeFactory'
 import { removeNodeFromFlow, nodesToNodeDTOs } from '../utils/flowSerializer'
-import type { TNodeModule, TNodeDTO } from '@/pages/WorkflowRules/types'
+import type { TNodeDTO, TNodeDefinition } from '@/pages/WorkflowRules/types'
 import useFlowLayout from './useFlowLayout'
 
 type TDrawerState = {
@@ -19,10 +19,12 @@ type TDrawerState = {
  *
  * @param initialNodes 初始節點
  * @param initialEdges 初始邊線
+ * @param definitionsMap 節點定義對照表（由 API 取得）
  */
 const useFlowActions = (
 	initialNodes: TFlowNode[],
 	initialEdges: TFlowEdge[],
+	definitionsMap: Record<string, TNodeDefinition> = {},
 ) => {
 	const [nodes, setNodes] = useState<TFlowNode[]>(initialNodes)
 	const [edges, setEdges] = useState<TFlowEdge[]>(initialEdges)
@@ -36,18 +38,21 @@ const useFlowActions = (
 	nodesRef.current = nodes
 	const edgesRef = useRef(edges)
 	edgesRef.current = edges
+	const definitionsMapRef = useRef(definitionsMap)
+	definitionsMapRef.current = definitionsMap
 
 	const { getLayoutedElements } = useFlowLayout()
 
 	/** 在兩個節點之間插入新節點 */
 	const addNodeBetween = useCallback(
-		(sourceId: string, targetId: string, nodeModule: TNodeModule) => {
+		(sourceId: string, targetId: string, nodeModule: string) => {
 			const result = insertNodeBetween(
 				nodesRef.current,
 				edgesRef.current,
 				sourceId,
 				targetId,
 				nodeModule,
+				definitionsMapRef.current,
 			)
 			const layouted = getLayoutedElements(result.nodes, result.edges)
 			setNodes(layouted.nodes)

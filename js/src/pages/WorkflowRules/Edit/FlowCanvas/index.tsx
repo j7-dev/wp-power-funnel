@@ -19,10 +19,11 @@ import useFlowActions from './hooks/useFlowActions'
 import { nodeDTOsToFlow, createEmptyFlow } from './utils/flowSerializer'
 import type {
 	TNodeDTO,
-	TNodeModule,
+	TNodeDefinition,
 	TTriggerPoint,
 } from '@/pages/WorkflowRules/types'
 import type { TFlowNodeData } from './types'
+import { NodeDefinitionsContext } from './NodeDefinitionsContext'
 import NodeDrawer from '../NodeDrawer'
 
 type TFlowCanvasProps = {
@@ -32,6 +33,10 @@ type TFlowCanvasProps = {
 	triggerPoint: TTriggerPoint | ''
 	/** 觸發點標籤對照表（hook => 顯示名稱），由父元件從 API 取得並傳入 */
 	triggerPointLabelMap?: Record<string, string>
+	/** 節點定義對照表（id => 定義），由父元件從 API 取得並傳入 */
+	nodeDefinitionsMap?: Record<string, TNodeDefinition>
+	/** 節點定義列表，由父元件從 API 取得並傳入 */
+	nodeDefinitions?: TNodeDefinition[]
 }
 
 /**
@@ -48,7 +53,16 @@ export type TFlowCanvasRef = {
  * 負責渲染工作流的節點編輯器
  */
 const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
-	({ nodeDTOs, triggerPoint, triggerPointLabelMap = {} }, ref) => {
+	(
+		{
+			nodeDTOs,
+			triggerPoint,
+			triggerPointLabelMap = {},
+			nodeDefinitionsMap = {},
+			nodeDefinitions = [],
+		},
+		ref,
+	) => {
 		/** 從後端資料建立初始 flow */
 		const initialFlow = useMemo(() => {
 			if (nodeDTOs.length > 0) {
@@ -69,7 +83,7 @@ const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
 			closeDrawer,
 			getNodeDTOs,
 			applyLayout,
-		} = useFlowActions(initialFlow.nodes, initialFlow.edges)
+		} = useFlowActions(initialFlow.nodes, initialFlow.edges, nodeDefinitionsMap)
 
 		/** 初始套用佈局 */
 		useEffect(() => {
@@ -97,8 +111,8 @@ const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
 		)
 
 		/**
-		 * 將 addNodeBetween 注入到每條邊線的 data 中
-		 * 讓 CustomEdge 可以呼叫新增節點
+		 * 將 addNodeBetween 與 nodeDefinitions 注入到每條邊線的 data 中
+		 * 讓 CustomEdge 可以呼叫新增節點並顯示 API 驅動的選單
 		 */
 		const edgesWithHandler = useMemo(
 			() =>
@@ -109,15 +123,16 @@ const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
 						onAddNode: (
 							sourceId: string,
 							targetId: string,
-							nodeModule: TNodeModule,
+							nodeModule: string,
 						) => addNodeBetween(sourceId, targetId, nodeModule),
+						nodeDefinitions,
 					},
 				})),
-			[edges, addNodeBetween],
+			[edges, addNodeBetween, nodeDefinitions],
 		)
 
 		return (
-			<>
+			<NodeDefinitionsContext.Provider value={nodeDefinitionsMap}>
 				<div style={{ width: '100%', height: '600px' }}>
 					<ReactFlow
 						nodes={nodes}
@@ -138,11 +153,12 @@ const FlowCanvas = forwardRef<TFlowCanvasRef, TFlowCanvasProps>(
 					isOpen={drawerState.isOpen}
 					node={selectedNode}
 					nodeData={selectedNode?.data as TFlowNodeData | undefined}
+					nodeDefinitions={nodeDefinitionsMap}
 					onClose={closeDrawer}
 					onUpdate={updateNodeData}
 					onDelete={removeNode}
 				/>
-			</>
+			</NodeDefinitionsContext.Provider>
 		)
 	},
 )

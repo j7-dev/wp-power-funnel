@@ -1,9 +1,9 @@
 import { memo, useCallback } from 'react'
-import { Drawer, Form, Button, Space, Popconfirm } from 'antd'
+import { Drawer, Form, Button, Space, Popconfirm, Alert } from 'antd'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
 import type { TFlowNode, TFlowNodeData } from '../FlowCanvas/types'
-import { NODE_MODULE, NODE_MODULE_LABELS } from '@/pages/WorkflowRules/types'
-import { EmailForm, WaitForm, DefaultForm } from './forms'
+import type { TNodeDefinition } from '@/pages/WorkflowRules/types'
+import DynamicNodeForm from './forms/DynamicNodeForm'
 
 type TNodeDrawerProps = {
 	/** 是否開啟 */
@@ -12,6 +12,8 @@ type TNodeDrawerProps = {
 	node: TFlowNode | null
 	/** 節點 data（型別縮窄後） */
 	nodeData: TFlowNodeData | undefined
+	/** 節點定義對照表（id => 定義） */
+	nodeDefinitions: Record<string, TNodeDefinition>
 	/** 關閉 Drawer */
 	onClose: () => void
 	/** 更新節點 data */
@@ -22,13 +24,14 @@ type TNodeDrawerProps = {
 
 /**
  * 節點設定抽屜元件
- * 根據節點類型渲染對應的設定表單
+ * 根據 API 回傳的 NodeDefinition form_fields 動態渲染設定表單
  */
 const NodeDrawer = memo(
 	({
 		isOpen,
 		node,
 		nodeData,
+		nodeDefinitions,
 		onClose,
 		onUpdate,
 		onDelete,
@@ -40,22 +43,7 @@ const NodeDrawer = memo(
 			if (!node || !nodeData) return
 			const values = form.getFieldsValue()
 			const args = values.args ?? {}
-
-			/** 如果使用 DefaultForm 的 _raw 欄位，嘗試解析 JSON */
-			if (typeof args._raw === 'string') {
-				try {
-					const parsed = JSON.parse(args._raw) as Record<
-						string,
-						unknown
-					>
-					onUpdate(node.id, { args: parsed })
-				} catch {
-					/** JSON 解析失敗則保留原本 */
-					onUpdate(node.id, { args: nodeData.args })
-				}
-			} else {
-				onUpdate(node.id, { args })
-			}
+			onUpdate(node.id, { args })
 			onClose()
 		}, [node, nodeData, form, onUpdate, onClose])
 
@@ -67,24 +55,26 @@ const NodeDrawer = memo(
 
 		if (!node || !nodeData) return null
 
-		const label =
-			NODE_MODULE_LABELS[nodeData.nodeModule] ?? nodeData.nodeModule
+		const definition = nodeDefinitions[nodeData.nodeModule]
+		const label = definition?.name ?? nodeData.nodeModule
 
-		/** 根據節點模組渲染對應表單 */
+		/** 根據節點定義渲染動態表單 */
 		const renderForm = () => {
-			switch (nodeData.nodeModule) {
-				case NODE_MODULE.EMAIL:
-					return <EmailForm args={nodeData.args} />
-				case NODE_MODULE.WAIT:
-					return <WaitForm args={nodeData.args} />
-				default:
-					return (
-						<DefaultForm
-							args={nodeData.args}
-							nodeModule={label}
-						/>
-					)
+			if (!definition) {
+				return (
+					<Alert
+						message={`無法辨識的節點類型：${nodeData.nodeModule}`}
+						type="warning"
+						showIcon
+					/>
+				)
 			}
+			return (
+				<DynamicNodeForm
+					formFields={definition.form_fields}
+					args={nodeData.args}
+				/>
+			)
 		}
 
 		return (

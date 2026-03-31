@@ -1,35 +1,36 @@
 import { nanoid } from 'nanoid'
 import type { TFlowNode, TFlowEdge } from '../types'
 import { FLOW_NODE_TYPE, ENTRANCE_NODE_ID, EXIT_NODE_ID } from '../types'
-import {
-	NODE_MODULE_LABELS,
-	NODE_MODULE_TYPE_MAP,
-	type TNodeModule,
-} from '@/pages/WorkflowRules/types'
+import type { TNodeDefinition, TNodeType } from '@/pages/WorkflowRules/types'
 
 /**
  * 建立動作節點
- * @param nodeModule 節點模組名稱
+ * @param nodeModule 節點模組名稱（ID）
+ * @param definitionsMap 節點定義對照表（由 API 取得）
  * @param args 節點參數
  * @param sort 排序序號
  * @returns React Flow 節點物件
  */
 export const createActionNode = (
-	nodeModule: TNodeModule,
+	nodeModule: string,
+	definitionsMap: Record<string, TNodeDefinition> = {},
 	args: Record<string, unknown> = {},
 	sort = 0,
-): TFlowNode => ({
-	id: nanoid(10),
-	type: FLOW_NODE_TYPE.ACTION,
-	position: { x: 0, y: 0 },
-	data: {
-		nodeModule,
-		nodeType: NODE_MODULE_TYPE_MAP[nodeModule],
-		label: NODE_MODULE_LABELS[nodeModule],
-		args,
-		sort,
-	},
-})
+): TFlowNode => {
+	const definition = definitionsMap[nodeModule]
+	return {
+		id: nanoid(10),
+		type: FLOW_NODE_TYPE.ACTION,
+		position: { x: 0, y: 0 },
+		data: {
+			nodeModule,
+			nodeType: (definition?.type ?? 'action') as TNodeType,
+			label: definition?.name ?? nodeModule,
+			args,
+			sort,
+		},
+	}
+}
 
 /**
  * 建立入口節點
@@ -75,22 +76,24 @@ export const createEdge = (source: string, target: string): TFlowEdge => ({
 
 /**
  * 在兩個節點之間插入新節點
- * 將原先 source → target 的連線拆分為 source → newNode → target
+ * 將原先 source -> target 的連線拆分為 source -> newNode -> target
  *
  * @param nodes 當前節點陣列
  * @param edges 當前邊線陣列
  * @param sourceId 來源節點 ID
  * @param targetId 目標節點 ID
  * @param nodeModule 要插入的節點模組
+ * @param definitionsMap 節點定義對照表
  */
 export const insertNodeBetween = (
 	nodes: TFlowNode[],
 	edges: TFlowEdge[],
 	sourceId: string,
 	targetId: string,
-	nodeModule: TNodeModule,
+	nodeModule: string,
+	definitionsMap: Record<string, TNodeDefinition> = {},
 ): { nodes: TFlowNode[]; edges: TFlowEdge[] } => {
-	const newNode = createActionNode(nodeModule)
+	const newNode = createActionNode(nodeModule, definitionsMap)
 
 	/** 移除原先的邊線 */
 	const filteredEdges = edges.filter(
