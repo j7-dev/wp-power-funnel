@@ -1,4 +1,4 @@
-import { memo, useRef, useCallback } from 'react'
+import { memo, useRef, useCallback, useMemo } from 'react'
 import { Edit, useForm } from '@refinedev/antd'
 import { HttpError, useParsed } from '@refinedev/core'
 import { toFormData, Heading } from 'antd-toolkit'
@@ -44,6 +44,25 @@ const EditComponent = () => {
 		})
 
 	const record: TWorkflowRuleRecord | undefined = query?.data?.data
+
+	/**
+	 * 安全解析 nodes：後端可能回傳 JSON 字串而非陣列
+	 * 若為字串則 JSON.parse，解析失敗則回傳空陣列
+	 */
+	const parsedNodes = useMemo(() => {
+		const raw = record?.nodes
+		if (!raw) return []
+		if (Array.isArray(raw)) return raw
+		if (typeof raw === 'string') {
+			try {
+				const parsed = JSON.parse(raw)
+				return Array.isArray(parsed) ? parsed : []
+			} catch {
+				return []
+			}
+		}
+		return []
+	}, [record?.nodes])
 
 	/** 表單提交處理：合併表單欄位與 FlowCanvas 的節點資料 */
 	const handleOnFinish = useCallback(() => {
@@ -105,7 +124,7 @@ const EditComponent = () => {
 					{!query?.isLoading && record && (
 						<FlowCanvas
 							ref={flowRef}
-							nodeDTOs={record.nodes ?? []}
+							nodeDTOs={parsedNodes}
 							triggerPoint={triggerPoint ?? record.trigger_point ?? ''}
 							triggerPointLabelMap={triggerPointLabelMap}
 							nodeDefinitionsMap={nodeDefinitionsMap}
