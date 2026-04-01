@@ -1,0 +1,80 @@
+[ACTIVITY] 工作流引擎完整生命週期
+[ACTOR] Admin -> {specs/actors/admin.md}
+[ACTOR] System -> {specs/actors/system.md}
+[PRINCIPLE] Serializable Context Callable -> {specs/design-principles.md}
+
+# Phase 1: 設計時 — WorkflowRule 建立與註冊
+
+[STEP:1] @Admin {features/workflow-rule/create-workflow-rule.feature}
+  管理員建立 WorkflowRule（CPT: pf_workflow_rule），初始狀態為 draft
+
+[STEP:2] @Admin {features/workflow-rule/configure-trigger-point.feature}
+  管理員為 WorkflowRule 設定觸發點（trigger_point meta），支援舊版純字串格式與新版 {hook, params} 物件格式
+
+[STEP:3] @Admin {features/workflow-rule/configure-nodes.feature}
+  管理員在 ReactFlow 畫布上配置節點序列（nodes meta），每個節點包含 node_definition_id、params、match_callback
+
+[STEP:4] @Admin {features/workflow-rule/publish-workflow-rule.feature}
+  管理員將 WorkflowRule 狀態從 draft 切換為 publish
+
+[STEP:5] @System {features/workflow-rule/register-workflow-rules.feature}
+  系統在 init（priority=99）時掃描所有已發布的 WorkflowRule，在對應的 trigger_point hook 上 add_action 註冊監聽器
+
+# Phase 2: 觸發 — 業務事件觸發工作流
+
+[STEP:6] @System {features/trigger-point/bridge-business-events.feature}
+  TriggerPointService 監聯業務域生命週期事件（報名狀態、LINE 互動、工作流完成/失敗），轉換為對應的 pf/trigger/* hook 並帶入 context_callable_set
+
+[STEP:7] @System {features/scheduling/schedule-activity-triggers.feature}
+  ActivitySchedulerService 在活動資料同步時，為時間型觸發點（ACTIVITY_STARTED、ACTIVITY_BEFORE_START）建立 Action Scheduler 排程
+
+[DECISION:7a] 觸發時機
+  [BRANCH:7a:事件型觸發] @System {features/trigger-point/fire-event-trigger.feature}
+    業務事件發生時即時觸發 pf/trigger/* hook
+  [BRANCH:7a:時間型觸發] @System {features/scheduling/fire-scheduled-trigger.feature}
+    Action Scheduler 到期後觸發 pf/trigger/* hook
+[MERGE:7a]
+
+# Phase 3: 執行 — Workflow 實例建立與節點執行
+
+[STEP:8] @System {features/workflow/create-workflow-instance.feature}
+  pf/trigger/* hook 被觸發時，RecursionGuard 檢查遞迴深度，通過後 Repository::create_from() 建立 Workflow 實例（status=running）
+
+[DECISION:8a] RecursionGuard 檢查結果
+  [BRANCH:8a:深度未超過 MAX_DEPTH] @System {features/workflow/create-workflow-instance.feature}
+    建立正常的 running 狀態 Workflow
+  [BRANCH:8a:深度超過 MAX_DEPTH] @System {features/workflow/recursion-guard-exceeded.feature}
+    建立 failed 狀態 Workflow 並記錄錯誤
+[MERGE:8a]
+
+[STEP:9] @System {features/workflow/execute-workflow.feature}
+  Workflow 實例被建立後（status=running），觸發 power_funnel/workflow/running hook，WorkflowDTO::try_execute() 開始逐節點執行
+
+[STEP:10] @System {features/node-system/node-execution-flow.feature}
+  NodeDTO::try_execute() 執行流程：檢查 match_callback -> 查找 NodeDefinition -> 呼叫 execute() -> 記錄 WorkflowResultDTO
+
+[DECISION:10a] 節點執行結果
+  [BRANCH:10a:match_callback 不滿足] @System {features/node-system/node-skip.feature}
+    記錄 code=301（跳過），呼叫 do_next() 繼續下一節點
+  [BRANCH:10a:執行成功 code=200] @System {features/node-system/node-success.feature}
+    記錄結果，呼叫 do_next() 繼續下一節點
+  [BRANCH:10a:執行失敗 code=500] @System {features/workflow/workflow-failed.feature}
+    記錄結果，Workflow 狀態設為 failed
+[MERGE:10a]
+
+[STEP:11] @System {features/node-system/context-param-system.feature}
+  ParamHelper 處理節點參數：當 param 值為 "context" 時從 workflow.context 取值；模板字串支援 {{variable}} 格式替換
+
+# Phase 4: 特殊節點行為
+
+[STEP:12] @System {features/node-system/wait-node-scheduling.feature}
+  WaitNode 執行時使用 as_schedule_single_action 排程延遲，到期後重新觸發 power_funnel/workflow/running 繼續執行
+
+# Phase 5: 完成
+
+[DECISION:13a] Workflow 完成判定
+  [BRANCH:13a:所有節點皆完成] @System {features/workflow/workflow-completed.feature}
+    Workflow 狀態設為 completed，觸發 power_funnel/workflow/completed hook
+  [BRANCH:13a:任一節點失敗] @System {features/workflow/workflow-failed.feature}
+    Workflow 狀態設為 failed，觸發 power_funnel/workflow/failed hook
+[MERGE:13a]

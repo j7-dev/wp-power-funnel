@@ -1,0 +1,110 @@
+// Power Funnel Workflow Engine - Entity Relationship Model
+// 底層儲存基於 WordPress CPT（Custom Post Type）+ Post Meta
+// 此 DBML 描述邏輯資料模型，實際儲存在 wp_posts + wp_postmeta 表中
+
+// ========== WorkflowRule（設計時）==========
+
+Table workflow_rules {
+  id           integer   [pk, note: 'WP Post ID']
+  title        varchar   [not null, note: 'post_title']
+  status       varchar   [not null, note: 'post_status: publish | draft | trash']
+  created_at   timestamp [not null, note: 'post_date']
+  updated_at   timestamp [not null, note: 'post_modified']
+
+  // -- Post Meta fields --
+  trigger_point varchar  [note: 'meta: 觸發點設定。舊版為純字串 hook name；新版為 JSON 字串 {"hook":"...","params":{...}}']
+  nodes         text     [note: 'meta: JSON 序列化的 NodeDTO[]，儲存節點序列']
+
+  Note: '工作流規則模板（CPT: pf_workflow_rule）。管理員設計的工作流程定義，發布後在對應 trigger_point hook 上掛載監聽器。'
+}
+
+Enum workflow_rule_status {
+  publish  [note: '已發布，系統會掛載 hook 監聽器']
+  draft    [note: '草稿，不會掛載監聽器']
+  trash    [note: '已刪除']
+}
+
+// ========== Workflow（執行時）==========
+
+Table workflows {
+  id                integer   [pk, note: 'WP Post ID']
+  title             varchar   [note: 'post_title，自動生成']
+  status            varchar   [not null, note: 'post_status: running | completed | failed']
+  created_at        timestamp [not null, note: 'post_date']
+  updated_at        timestamp [not null, note: 'post_modified']
+
+  // -- Post Meta fields --
+  workflow_rule_id  integer   [not null, note: 'meta: 來源 WorkflowRule 的 Post ID']
+  trigger_point     varchar   [not null, note: 'meta: 從 WorkflowRule 複製的觸發點 hook']
+  nodes             text      [not null, note: 'meta: 從 WorkflowRule 複製的 NodeDTO[] JSON']
+  context_callable_set text   [note: 'meta: PHP 序列化的 callable set，延遲執行以取得 context']
+  results           text      [note: 'meta: WorkflowResultDTO[] JSON，記錄每個節點的執行結果']
+
+  Note: '工作流執行實例（CPT: pf_workflow）。由 WorkflowRule 觸發後建立，逐節點執行至 completed 或 failed。'
+}
+
+Enum workflow_status {
+  running    [note: '進行中，逐節點執行']
+  completed  [note: '所有節點已完成']
+  failed     [note: '某節點執行失敗或遞迴深度超限']
+}
+
+// ========== NodeDTO（嵌入在 workflow_rules.nodes 與 workflows.nodes 中）==========
+
+Table node_dtos {
+  id                   varchar  [pk, note: '節點唯一識別碼，如 n1, n2']
+  node_definition_id   varchar  [not null, note: '對應已註冊的 NodeDefinition ID，如 email, wait, line']
+  params               text     [note: 'JSON 物件，節點參數 key-value']
+  match_callback       text     [note: 'JSON 陣列，執行前條件檢查 callable']
+  match_callback_params text    [note: 'JSON 物件，match_callback 接受的參數']
+
+  Note: '節點資料（嵌入於 workflow_rules.nodes 和 workflows.nodes meta 中，非獨立 DB 表）。用戶編輯完 NodeDefinition 表單後儲存的節點設定。'
+}
+
+// ========== WorkflowResultDTO（嵌入在 workflows.results 中）==========
+
+Table workflow_result_dtos {
+  node_id  varchar  [not null, note: '對應 NodeDTO.id']
+  code     integer  [not null, note: '200=成功, 301=跳過, 500=失敗']
+  message  varchar  [note: '結果描述']
+  data     text     [note: 'JSON，額外資料']
+
+  Note: '執行結果（嵌入於 workflows.results meta 中，非獨立 DB 表）。每個節點執行後記錄一筆。'
+}
+
+Enum result_code {
+  200  [note: '成功']
+  301  [note: '跳過（match_callback 不符）']
+  500  [note: '失敗']
+}
+
+// ========== NodeDefinition（運行時記憶體，非 DB 儲存）==========
+
+Table node_definitions {
+  id           varchar    [pk, note: '節點定義 ID，如 email, wait, line']
+  name         varchar    [not null, note: '節點名稱']
+  description  varchar    [note: '節點描述']
+  icon         varchar    [note: '圖示 URL']
+  type         varchar    [not null, note: 'send_message | action']
+  form_fields  text       [note: 'FormFieldDTO[] JSON，表單欄位 schema']
+
+  Note: '節點定義（運行時透過 apply_filters 注入至記憶體，非 DB 表）。定義節點的 UI 表單 schema 與 execute() 行為。'
+}
+
+Enum node_type {
+  send_message  [note: '發送訊息類：Email, SMS, LINE, Webhook']
+  action        [note: '動作類：Wait, WaitUntil, TimeWindow, YesNoBranch, SplitBranch, TagUser']
+}
+
+// ========== TriggerPoint（運行時記憶體，由 ETriggerPoint enum 定義）==========
+
+Table trigger_points {
+  hook  varchar  [pk, note: 'hook 名稱，如 pf/trigger/registration_approved']
+  name  varchar  [not null, note: '顯示名稱，如 "用戶報名審核通過後"']
+
+  Note: '觸發點定義（由 ETriggerPoint enum 產生，可透過 apply_filters 擴充）。非 DB 表。'
+}
+
+// ========== Relationships ==========
+
+Ref: workflows.workflow_rule_id > workflow_rules.id  // many-to-one: 多個 Workflow 對應一個 WorkflowRule

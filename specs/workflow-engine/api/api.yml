@@ -1,0 +1,402 @@
+openapi: 3.0.0
+info:
+  title: Power Funnel Workflow Engine API
+  version: 1.0.0
+  description: |
+    工作流引擎相關的 REST API 端點。
+    除了下方自訂 API 外，WorkflowRule（pf_workflow_rule）和 Workflow（pf_workflow）
+    的 CRUD 操作使用 WordPress REST API（/wp/v2/pf_workflow_rule, /wp/v2/pf_workflow）。
+
+paths:
+  /power-funnel/trigger-points:
+    get:
+      operationId: getTriggerPoints
+      summary: 查詢所有已註冊的觸發條件列表
+      description: |
+        從 ETriggerPoint enum 取得預設觸發點，再經 apply_filters('power_funnel/workflow_rule/trigger_points') 合併第三方擴充的觸發點。
+        前端用於 WorkflowRule 編輯頁的觸發條件下拉選單。
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code:
+                    type: string
+                    example: operation_success
+                  message:
+                    type: string
+                    example: 操作成功
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TriggerPoint'
+
+  /power-funnel/node-definitions:
+    get:
+      operationId: getNodeDefinitions
+      summary: 查詢所有已註冊的節點定義列表
+      description: |
+        從 apply_filters('power_funnel/workflow_rule/node_definitions') 取得所有 NodeDefinition。
+        前端用於 ReactFlow 畫布的節點類型選單與 Drawer 表單動態渲染。
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message, data]
+                properties:
+                  code:
+                    type: string
+                    example: operation_success
+                  message:
+                    type: string
+                    example: 操作成功
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NodeDefinition'
+
+  /wp/v2/pf_workflow_rule:
+    get:
+      operationId: listWorkflowRules
+      summary: 查詢 WorkflowRule 列表
+      description: WordPress REST API 標準端點，支援分頁、篩選、排序。
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [publish, draft, trash]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkflowRule'
+
+    post:
+      operationId: createWorkflowRule
+      summary: 建立 WorkflowRule
+      description: 使用 WordPress REST API 建立新的 WorkflowRule，初始狀態為 draft。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: 報名通知工作流
+                status:
+                  type: string
+                  enum: [publish, draft]
+                  default: draft
+                meta:
+                  type: object
+                  properties:
+                    trigger_point:
+                      type: string
+                      description: 觸發點設定（純字串或 JSON 字串）
+                    nodes:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/NodeDTO'
+      responses:
+        '201':
+          description: 建立成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRule'
+        '400':
+          description: 參數錯誤
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WPError'
+        '403':
+          description: 權限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WPError'
+
+  /wp/v2/pf_workflow_rule/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getWorkflowRule
+      summary: 取得單一 WorkflowRule
+      responses:
+        '200':
+          description: 操作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRule'
+        '404':
+          description: 資源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WPError'
+    put:
+      operationId: updateWorkflowRule
+      summary: 更新 WorkflowRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                status:
+                  type: string
+                  enum: [publish, draft, trash]
+                meta:
+                  type: object
+                  properties:
+                    trigger_point:
+                      type: string
+                    nodes:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/NodeDTO'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRule'
+        '404':
+          description: 資源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WPError'
+    delete:
+      operationId: deleteWorkflowRule
+      summary: 刪除 WorkflowRule
+      responses:
+        '200':
+          description: 刪除成功
+        '404':
+          description: 資源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WPError'
+
+components:
+  schemas:
+    TriggerPoint:
+      type: object
+      required: [hook, name]
+      properties:
+        hook:
+          type: string
+          description: 觸發點 hook 名稱
+          example: pf/trigger/registration_approved
+        name:
+          type: string
+          description: 觸發點顯示名稱
+          example: 用戶報名審核通過後
+
+    NodeDefinition:
+      type: object
+      required: [id, name, description, icon, type, form_fields]
+      properties:
+        id:
+          type: string
+          description: 節點定義 ID
+          example: email
+        name:
+          type: string
+          description: 節點名稱
+          example: 傳送 Email
+        description:
+          type: string
+          description: 節點描述
+          example: 傳送 Email
+        icon:
+          type: string
+          description: 節點圖示 URL
+          example: https://example.com/icons/email.svg
+        type:
+          type: string
+          description: 節點分類
+          enum: [send_message, action]
+        form_fields:
+          type: array
+          description: 節點表單欄位 schema
+          items:
+            $ref: '#/components/schemas/FormField'
+
+    FormField:
+      type: object
+      required: [name, label, type, required, sort]
+      properties:
+        name:
+          type: string
+          example: recipient
+        label:
+          type: string
+          example: 收件人
+        type:
+          type: string
+          description: 欄位類型
+          enum: [text, textarea, number, select, date, json, template_editor]
+        required:
+          type: boolean
+        placeholder:
+          type: string
+        description:
+          type: string
+        sort:
+          type: integer
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+              label:
+                type: string
+        validation:
+          type: array
+          items:
+            type: object
+            properties:
+              rule:
+                type: string
+              value:
+                type: number
+              message:
+                type: string
+        depends_on:
+          type: array
+          items:
+            type: string
+
+    NodeDTO:
+      type: object
+      required: [id, node_definition_id]
+      properties:
+        id:
+          type: string
+          description: 節點唯一識別碼
+          example: n1
+        node_definition_id:
+          type: string
+          description: 對應已註冊的 NodeDefinition ID
+          example: email
+        params:
+          type: object
+          description: 節點參數（key-value）
+          additionalProperties: true
+          example:
+            recipient: context
+            subject_tpl: 歡迎
+            content_tpl: 感謝報名
+        match_callback:
+          type: array
+          description: 執行前條件檢查 callback
+          items:
+            type: string
+          example: ["__return_true"]
+        match_callback_params:
+          type: object
+          description: match_callback 接受的參數
+          additionalProperties: true
+
+    WorkflowRule:
+      type: object
+      required: [id, title, status]
+      properties:
+        id:
+          type: integer
+          description: WorkflowRule ID（WP Post ID）
+        title:
+          type: object
+          properties:
+            rendered:
+              type: string
+              example: 報名通知工作流
+        status:
+          type: string
+          enum: [publish, draft, trash]
+        meta:
+          type: object
+          properties:
+            trigger_point:
+              type: string
+              description: 觸發點設定
+            nodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/NodeDTO'
+
+    WorkflowResultDTO:
+      type: object
+      required: [node_id, code, message]
+      properties:
+        node_id:
+          type: string
+          description: 對應 NodeDTO.id
+          example: n1
+        code:
+          type: integer
+          description: 狀態碼（200=成功, 301=跳過, 500=失敗）
+          enum: [200, 301, 500]
+        message:
+          type: string
+          description: 結果描述
+          example: 發信成功
+        data:
+          description: 額外資料
+          nullable: true
+
+    WPError:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: string
+          example: rest_post_invalid_id
+        message:
+          type: string
+          example: 無效的文章 ID
+        data:
+          type: object
+          properties:
+            status:
+              type: integer
+              example: 404
