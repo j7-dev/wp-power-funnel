@@ -19,12 +19,118 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 // 若 Action Scheduler 函式不存在，提供 stub 以避免測試環境中的錯誤。
 // Compatibility.php 使用這些函式進行版本升級排程，在測試中不需要實際執行。
+
+/**
+ * Action Scheduler 測試用排程記錄器。
+ *
+ * 當 Action Scheduler 真實函式不可用時，此記錄器模擬排程的追蹤行為，
+ * 允許 as_has_scheduled_action()、as_get_scheduled_actions()、
+ * as_unschedule_all_actions() 等函式正常運作於測試環境。
+ */
+class ActionSchedulerTestRegistry {
+    /** @var array<int, array{hook: string, args: array<mixed>, group: string, timestamp: int}> 已排程的 actions */
+    private static array $scheduled = [];
+    /** @var int 下一個 action ID 的計數器 */
+    private static int $next_id = 1;
+
+    /**
+     * 新增排程
+     *
+     * @param int    $timestamp Unix timestamp
+     * @param string $hook      Hook 名稱
+     * @param array<mixed>  $args      參數
+     * @param string $group     群組
+     * @return int action ID
+     */
+    public static function schedule(int $timestamp, string $hook, array $args = [], string $group = ''): int {
+        $id = self::$next_id++;
+        self::$scheduled[$id] = [
+            'hook'      => $hook,
+            'args'      => $args,
+            'group'     => $group,
+            'timestamp' => $timestamp,
+        ];
+        return $id;
+    }
+
+    /**
+     * 判斷是否有符合條件的排程
+     *
+     * @param string       $hook  Hook 名稱
+     * @param array<mixed>|null $args  參數（null 表示不過濾）
+     * @param string       $group 群組
+     * @return bool
+     */
+    public static function has(string $hook, ?array $args = null, string $group = ''): bool {
+        foreach (self::$scheduled as $action) {
+            if ($action['hook'] !== $hook) {
+                continue;
+            }
+            if ($args !== null && $action['args'] !== $args) {
+                continue;
+            }
+            if ($group !== '' && $action['group'] !== $group) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 取得符合條件的所有排程 IDs
+     *
+     * @param array<string, mixed> $query 查詢條件
+     * @param string               $return_format 回傳格式（'ids' 或 'objects'）
+     * @return array<int>
+     */
+    public static function get(array $query = [], string $return_format = 'ids'): array {
+        $hook   = $query['hook'] ?? null;
+        $result = [];
+        foreach (self::$scheduled as $id => $action) {
+            if ($hook !== null && $action['hook'] !== $hook) {
+                continue;
+            }
+            $result[] = $id;
+        }
+        return $result;
+    }
+
+    /**
+     * 取消所有符合 hook 的排程
+     *
+     * @param string       $hook  Hook 名稱
+     * @param array<mixed>|null $args  參數（null 表示取消所有）
+     * @param string       $group 群組
+     * @return void
+     */
+    public static function unschedule_all(string $hook, ?array $args = null, string $group = ''): void {
+        foreach (self::$scheduled as $id => $action) {
+            if ($action['hook'] !== $hook) {
+                continue;
+            }
+            if ($args !== null && $action['args'] !== $args) {
+                continue;
+            }
+            if ($group !== '' && $action['group'] !== $group) {
+                continue;
+            }
+            unset(self::$scheduled[$id]);
+        }
+    }
+
+    /** 清除所有排程（測試 tear_down 使用） */
+    public static function clear(): void {
+        self::$scheduled = [];
+    }
+}
+
 if (!function_exists('as_enqueue_async_action')) {
     /**
      * Action Scheduler stub：測試環境中不實際排程。
      *
      * @param string  $hook    Hook 名稱
-     * @param array   $args    參數
+     * @param array<mixed>   $args    參數
      * @param string  $group   群組
      * @param bool    $unique  是否唯一
      * @return int 虛擬 action ID
@@ -36,19 +142,20 @@ if (!function_exists('as_enqueue_async_action')) {
 
 if (!function_exists('as_schedule_single_action')) {
     /**
-     * Action Scheduler stub：測試環境中不實際排程。
+     * Action Scheduler stub：測試環境中追蹤排程但不實際執行。
      *
      * @param int     $timestamp Unix timestamp
      * @param string  $hook      Hook 名稱
-     * @param array   $args      參數
+     * @param array<mixed>   $args      參數
      * @param string  $group     群組
      * @param bool    $unique    是否唯一
-     * @return int 虛擬 action ID
+     * @return int 虛擬 action ID（非零代表成功）
      */
     function as_schedule_single_action(int $timestamp, string $hook, array $args = [], string $group = '', bool $unique = false): int {
-        // 回傳 1 代表「排程成功」，模擬 Action Scheduler 成功建立排程並回傳 action ID。
+        // 回傳非零 ID 代表「排程成功」，模擬 Action Scheduler 成功建立排程並回傳 action ID。
         // WaitNode / WaitUntilNode / TimeWindowNode 依此判斷是否排程成功（非零即成功）。
-        return 1;
+        // 同時記錄至 ActionSchedulerTestRegistry，供 as_has_scheduled_action() 查詢。
+        return ActionSchedulerTestRegistry::schedule($timestamp, $hook, $args, $group);
     }
 }
 
@@ -56,13 +163,54 @@ if (!function_exists('as_next_scheduled_action')) {
     /**
      * Action Scheduler stub：回傳 false 表示無排程。
      *
-     * @param string $hook  Hook 名稱
-     * @param array  $args  參數
-     * @param string $group 群組
+     * @param string       $hook  Hook 名稱
+     * @param array<mixed>|null $args  參數
+     * @param string       $group 群組
      * @return bool|int
      */
-    function as_next_scheduled_action(string $hook, array $args = [], string $group = ''): bool|int {
-        return false;
+    function as_next_scheduled_action(string $hook, ?array $args = null, string $group = ''): bool|int {
+        return ActionSchedulerTestRegistry::has($hook, $args, $group) ? 1 : false;
+    }
+}
+
+if (!function_exists('as_has_scheduled_action')) {
+    /**
+     * Action Scheduler stub：判斷是否有符合條件的排程。
+     *
+     * @param string       $hook  Hook 名稱
+     * @param array<mixed>|null $args  參數（null 表示不過濾）
+     * @param string       $group 群組
+     * @return bool
+     */
+    function as_has_scheduled_action(string $hook, ?array $args = null, string $group = ''): bool {
+        return ActionSchedulerTestRegistry::has($hook, $args, $group);
+    }
+}
+
+if (!function_exists('as_get_scheduled_actions')) {
+    /**
+     * Action Scheduler stub：取得符合條件的排程。
+     *
+     * @param array<string, mixed> $args          查詢條件
+     * @param string               $return_format 回傳格式
+     * @return array<int>
+     */
+    function as_get_scheduled_actions(array $args = [], string $return_format = 'ids'): array {
+        return ActionSchedulerTestRegistry::get($args, $return_format);
+    }
+}
+
+if (!function_exists('as_unschedule_all_actions')) {
+    /**
+     * Action Scheduler stub：取消所有符合 hook 的排程。
+     *
+     * @param string       $hook  Hook 名稱
+     * @param array<mixed>|null $args  參數（null 表示取消所有）
+     * @param string       $group 群組
+     * @return void
+     */
+    function as_unschedule_all_actions(string $hook, ?array $args = null, string $group = ''): void {
+        ActionSchedulerTestRegistry::unschedule_all($hook, $args, $group);
     }
 }
 
@@ -186,6 +334,8 @@ if (!class_exists('WC_Order')) {
         public function get_formatted_shipping_address(): string { return (string) ( $this->data['shipping_address'] ?? '' ); }
         /** @return string 格式化的帳單地址 */
         public function get_formatted_billing_address(): string { return (string) ( $this->data['billing_address'] ?? '' ); }
+        /** @return string 訂單狀態（不含 wc- 前綴） */
+        public function get_status(): string { return (string) ( $this->data['status'] ?? '' ); }
         /** @return array<int, WC_Order_Item_Stub> 訂單商品項目 */
         public function get_items(): array { return $this->items; }
         /** @return \DateTimeImmutable|null 訂單建立日期 */
@@ -272,6 +422,97 @@ if (!function_exists('wc_get_order')) {
      */
     function wc_get_order( $order_id ): WC_Order|false {
         return WC_Order_Stub_Registry::get( (int) $order_id );
+    }
+}
+
+// 若 WC_Subscription 不存在，提供最小 stub 以支援訂閱觸發點測試。
+// TriggerPointService 的訂閱 handlers 使用 instanceof WC_Subscription 進行型別判斷，
+// resolve_subscription_context() 也使用 WC_Subscription 的 getter 方法。
+if (!class_exists('WC_Subscription')) {
+    /**
+     * WooCommerce WC_Subscription 最小 stub。
+     *
+     * 僅實作 resolve_subscription_context() 與 handler 所需的 getter 方法。
+     * 測試時透過 WC_Subscription_Stub_Registry 註冊假訂閱資料。
+     */
+    class WC_Subscription {
+        /** @var array<string, mixed> 訂閱資料 */
+        private array $data;
+
+        /**
+         * Constructor
+         *
+         * @param array<string, mixed> $data 訂閱資料
+         */
+        public function __construct( array $data = [] ) {
+            $this->data = $data;
+        }
+
+        /** @return int 訂閱 ID */
+        public function get_id(): int { return (int) ( $this->data['id'] ?? 0 ); }
+        /** @return string 訂閱狀態（不含 wc- 前綴） */
+        public function get_status(): string { return (string) ( $this->data['status'] ?? '' ); }
+        /** @return int 客戶 ID */
+        public function get_customer_id(): int { return (int) ( $this->data['customer_id'] ?? 0 ); }
+        /** @return string 帳單 Email */
+        public function get_billing_email(): string { return (string) ( $this->data['billing_email'] ?? '' ); }
+        /** @return string 帳單名字 */
+        public function get_billing_first_name(): string { return (string) ( $this->data['billing_first_name'] ?? '' ); }
+        /** @return string 帳單姓氏 */
+        public function get_billing_last_name(): string { return (string) ( $this->data['billing_last_name'] ?? '' ); }
+        /** @return string 訂閱總金額 */
+        public function get_total(): string { return (string) ( $this->data['total'] ?? '0' ); }
+        /** @return string 付款方式 */
+        public function get_payment_method(): string { return (string) ( $this->data['payment_method'] ?? '' ); }
+    }
+}
+
+// WC_Subscription stub 註冊表。
+if (!class_exists('WC_Subscription_Stub_Registry')) {
+    /**
+     * WC_Subscription stub 註冊表。
+     * 測試可透過此類別註冊假的 WC_Subscription 物件，供 wcs_get_subscription() 回傳。
+     */
+    class WC_Subscription_Stub_Registry {
+        /** @var array<int, WC_Subscription> 已註冊的假訂閱 */
+        private static array $subscriptions = [];
+
+        /**
+         * 註冊假訂閱
+         *
+         * @param int             $subscription_id 訂閱 ID
+         * @param WC_Subscription $subscription    假訂閱物件
+         */
+        public static function register( int $subscription_id, WC_Subscription $subscription ): void {
+            self::$subscriptions[ $subscription_id ] = $subscription;
+        }
+
+        /**
+         * 取得假訂閱
+         *
+         * @param int $subscription_id 訂閱 ID
+         * @return WC_Subscription|false
+         */
+        public static function get( int $subscription_id ): WC_Subscription|false {
+            return self::$subscriptions[ $subscription_id ] ?? false;
+        }
+
+        /** 清除所有已註冊的假訂閱 */
+        public static function clear(): void {
+            self::$subscriptions = [];
+        }
+    }
+}
+
+if (!function_exists('wcs_get_subscription')) {
+    /**
+     * WooCommerce Subscriptions stub：從 stub 註冊表取得訂閱。
+     *
+     * @param int|string $subscription_id 訂閱 ID
+     * @return WC_Subscription|false
+     */
+    function wcs_get_subscription( $subscription_id ): WC_Subscription|false {
+        return WC_Subscription_Stub_Registry::get( (int) $subscription_id );
     }
 }
 
