@@ -61,39 +61,75 @@ enum ETriggerPoint : string {
 	/** 枚舉存根：推廣連結被點擊（目前無點擊追蹤機制，僅列出供前端顯示） */
 	case PROMO_LINK_CLICKED = self::PREFIX . 'promo_link_clicked';
 
-	// ========== P4: WooCommerce 觸發點 ==========
+	// ========== P4: WooCommerce 訂單觸發點 ==========
 
-	case ORDER_COMPLETED = self::PREFIX . 'order_completed';
+	case ORDER_COMPLETED  = self::PREFIX . 'order_completed';
+	case ORDER_PENDING    = self::PREFIX . 'order_pending';
+	case ORDER_PROCESSING = self::PREFIX . 'order_processing';
+	case ORDER_ON_HOLD    = self::PREFIX . 'order_on_hold';
+	case ORDER_CANCELLED  = self::PREFIX . 'order_cancelled';
+	case ORDER_REFUNDED   = self::PREFIX . 'order_refunded';
+	case ORDER_FAILED     = self::PREFIX . 'order_failed';
+
+	// ========== P5: 顧客觸發點 ==========
+
+	case CUSTOMER_REGISTERED = self::PREFIX . 'customer_registered';
+
+	// ========== P5: 訂閱觸發點 ==========
+
+	case SUBSCRIPTION_INITIAL_PAYMENT = self::PREFIX . 'subscription_initial_payment';
+	case SUBSCRIPTION_FAILED          = self::PREFIX . 'subscription_failed';
+	case SUBSCRIPTION_SUCCESS         = self::PREFIX . 'subscription_success';
+	case SUBSCRIPTION_RENEWAL_ORDER   = self::PREFIX . 'subscription_renewal_order';
+	case SUBSCRIPTION_END             = self::PREFIX . 'subscription_end';
+	case SUBSCRIPTION_TRIAL_END       = self::PREFIX . 'subscription_trial_end';
+	case SUBSCRIPTION_PREPAID_END     = self::PREFIX . 'subscription_prepaid_end';
 
 	/** 標籤 */
 	public function label(): string {
 		$mapper = [
-			self::REGISTRATION_CREATED->value   => '用戶報名後（舊）',
-			self::REGISTRATION_APPROVED->value  => '用戶報名審核通過後',
-			self::REGISTRATION_REJECTED->value  => '用戶報名被拒絕後',
-			self::REGISTRATION_CANCELLED->value => '用戶取消報名後',
-			self::REGISTRATION_FAILED->value    => '用戶報名失敗後',
+			self::REGISTRATION_CREATED->value         => '用戶報名後（舊）',
+			self::REGISTRATION_APPROVED->value        => '用戶報名審核通過後',
+			self::REGISTRATION_REJECTED->value        => '用戶報名被拒絕後',
+			self::REGISTRATION_CANCELLED->value       => '用戶取消報名後',
+			self::REGISTRATION_FAILED->value          => '用戶報名失敗後',
 
-			self::LINE_FOLLOWED->value          => '用戶關注 LINE 官方帳號後',
-			self::LINE_UNFOLLOWED->value        => '用戶取消關注 LINE 官方帳號後',
-			self::LINE_MESSAGE_RECEIVED->value  => '收到 LINE 訊息後',
-			self::LINE_POSTBACK_RECEIVED->value => '收到 LINE Postback 後',
-			self::LINE_JOIN->value              => 'Bot 被加入群組後',
-			self::LINE_LEAVE->value             => 'Bot 被移出群組後',
-			self::LINE_MEMBER_JOINED->value     => '新成員加入群組後',
-			self::LINE_MEMBER_LEFT->value       => '成員離開群組後',
+			self::LINE_FOLLOWED->value                => '用戶關注 LINE 官方帳號後',
+			self::LINE_UNFOLLOWED->value              => '用戶取消關注 LINE 官方帳號後',
+			self::LINE_MESSAGE_RECEIVED->value        => '收到 LINE 訊息後',
+			self::LINE_POSTBACK_RECEIVED->value       => '收到 LINE Postback 後',
+			self::LINE_JOIN->value                    => 'Bot 被加入群組後',
+			self::LINE_LEAVE->value                   => 'Bot 被移出群組後',
+			self::LINE_MEMBER_JOINED->value           => '新成員加入群組後',
+			self::LINE_MEMBER_LEFT->value             => '成員離開群組後',
 
-			self::WORKFLOW_COMPLETED->value     => '工作流完成後',
-			self::WORKFLOW_FAILED->value        => '工作流失敗後',
+			self::WORKFLOW_COMPLETED->value           => '工作流完成後',
+			self::WORKFLOW_FAILED->value              => '工作流失敗後',
 
-			self::ACTIVITY_STARTED->value       => '活動開始時',
-			self::ACTIVITY_BEFORE_START->value  => '活動開始前',
-			self::ACTIVITY_ENDED->value         => '活動結束後',
+			self::ACTIVITY_STARTED->value             => '活動開始時',
+			self::ACTIVITY_BEFORE_START->value        => '活動開始前',
+			self::ACTIVITY_ENDED->value               => '活動結束後',
 
-			self::USER_TAGGED->value            => '用戶被貼標籤後',
-			self::PROMO_LINK_CLICKED->value     => '推廣連結被點擊後',
+			self::USER_TAGGED->value                  => '用戶被貼標籤後',
+			self::PROMO_LINK_CLICKED->value           => '推廣連結被點擊後',
 
-			self::ORDER_COMPLETED->value        => '訂單完成後',
+			self::ORDER_COMPLETED->value              => '訂單完成後',
+			self::ORDER_PENDING->value                => '訂單待付款',
+			self::ORDER_PROCESSING->value             => '訂單處理中',
+			self::ORDER_ON_HOLD->value                => '訂單保留中',
+			self::ORDER_CANCELLED->value              => '訂單已取消',
+			self::ORDER_REFUNDED->value               => '訂單已退款',
+			self::ORDER_FAILED->value                 => '訂單失敗',
+
+			self::CUSTOMER_REGISTERED->value          => '新顧客註冊',
+
+			self::SUBSCRIPTION_INITIAL_PAYMENT->value => '訂閱首次付款完成',
+			self::SUBSCRIPTION_FAILED->value          => '訂閱失敗',
+			self::SUBSCRIPTION_SUCCESS->value         => '訂閱成功',
+			self::SUBSCRIPTION_RENEWAL_ORDER->value   => '訂閱續訂訂單建立',
+			self::SUBSCRIPTION_END->value             => '訂閱結束',
+			self::SUBSCRIPTION_TRIAL_END->value       => '訂閱試用期結束',
+			self::SUBSCRIPTION_PREPAID_END->value     => '訂閱預付期結束',
 		];
 		return $mapper[ $this->value ];
 	}
@@ -105,33 +141,49 @@ enum ETriggerPoint : string {
 	 */
 	public function group(): string {
 		$mapper = [
-			self::REGISTRATION_CREATED->value   => 'registration',
-			self::REGISTRATION_APPROVED->value  => 'registration',
-			self::REGISTRATION_REJECTED->value  => 'registration',
-			self::REGISTRATION_CANCELLED->value => 'registration',
-			self::REGISTRATION_FAILED->value    => 'registration',
+			self::REGISTRATION_CREATED->value         => 'registration',
+			self::REGISTRATION_APPROVED->value        => 'registration',
+			self::REGISTRATION_REJECTED->value        => 'registration',
+			self::REGISTRATION_CANCELLED->value       => 'registration',
+			self::REGISTRATION_FAILED->value          => 'registration',
 
-			self::LINE_FOLLOWED->value          => 'line_interaction',
-			self::LINE_UNFOLLOWED->value        => 'line_interaction',
-			self::LINE_MESSAGE_RECEIVED->value  => 'line_interaction',
-			self::LINE_POSTBACK_RECEIVED->value => 'line_interaction',
+			self::LINE_FOLLOWED->value                => 'line_interaction',
+			self::LINE_UNFOLLOWED->value              => 'line_interaction',
+			self::LINE_MESSAGE_RECEIVED->value        => 'line_interaction',
+			self::LINE_POSTBACK_RECEIVED->value       => 'line_interaction',
 
-			self::LINE_JOIN->value              => 'line_group',
-			self::LINE_LEAVE->value             => 'line_group',
-			self::LINE_MEMBER_JOINED->value     => 'line_group',
-			self::LINE_MEMBER_LEFT->value       => 'line_group',
+			self::LINE_JOIN->value                    => 'line_group',
+			self::LINE_LEAVE->value                   => 'line_group',
+			self::LINE_MEMBER_JOINED->value           => 'line_group',
+			self::LINE_MEMBER_LEFT->value             => 'line_group',
 
-			self::WORKFLOW_COMPLETED->value     => 'workflow',
-			self::WORKFLOW_FAILED->value        => 'workflow',
+			self::WORKFLOW_COMPLETED->value           => 'workflow',
+			self::WORKFLOW_FAILED->value              => 'workflow',
 
-			self::ACTIVITY_STARTED->value       => 'activity',
-			self::ACTIVITY_BEFORE_START->value  => 'activity',
-			self::ACTIVITY_ENDED->value         => 'activity',
+			self::ACTIVITY_STARTED->value             => 'activity',
+			self::ACTIVITY_BEFORE_START->value        => 'activity',
+			self::ACTIVITY_ENDED->value               => 'activity',
 
-			self::USER_TAGGED->value            => 'user_behavior',
-			self::PROMO_LINK_CLICKED->value     => 'user_behavior',
+			self::USER_TAGGED->value                  => 'user_behavior',
+			self::PROMO_LINK_CLICKED->value           => 'user_behavior',
 
-			self::ORDER_COMPLETED->value        => 'woocommerce',
+			self::ORDER_COMPLETED->value              => 'woocommerce',
+			self::ORDER_PENDING->value                => 'woocommerce',
+			self::ORDER_PROCESSING->value             => 'woocommerce',
+			self::ORDER_ON_HOLD->value                => 'woocommerce',
+			self::ORDER_CANCELLED->value              => 'woocommerce',
+			self::ORDER_REFUNDED->value               => 'woocommerce',
+			self::ORDER_FAILED->value                 => 'woocommerce',
+
+			self::CUSTOMER_REGISTERED->value          => 'customer',
+
+			self::SUBSCRIPTION_INITIAL_PAYMENT->value => 'subscription',
+			self::SUBSCRIPTION_FAILED->value          => 'subscription',
+			self::SUBSCRIPTION_SUCCESS->value         => 'subscription',
+			self::SUBSCRIPTION_RENEWAL_ORDER->value   => 'subscription',
+			self::SUBSCRIPTION_END->value             => 'subscription',
+			self::SUBSCRIPTION_TRIAL_END->value       => 'subscription',
+			self::SUBSCRIPTION_PREPAID_END->value     => 'subscription',
 		];
 		return $mapper[ $this->value ];
 	}
@@ -150,6 +202,8 @@ enum ETriggerPoint : string {
 			'activity'         => '活動時間',
 			'user_behavior'    => '用戶行為',
 			'woocommerce'      => 'WooCommerce',
+			'customer'         => '顧客行為',
+			'subscription'     => '訂閱',
 		];
 		return $label_map[ $this->group() ];
 	}

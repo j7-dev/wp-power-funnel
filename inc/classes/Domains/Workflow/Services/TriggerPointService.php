@@ -38,9 +38,29 @@ final class TriggerPointService {
 		\add_action('power_funnel/workflow/completed', [ __CLASS__, 'on_workflow_completed' ], 10, 1);
 		\add_action('power_funnel/workflow/failed', [ __CLASS__, 'on_workflow_failed' ], 10, 1);
 
-		// P4：WooCommerce 訂單觸發點（軟依賴）
+		// P4/P5：WooCommerce 訂單與顧客觸發點（軟依賴）
 		if ( \function_exists( 'wc_get_order' ) ) {
 			\add_action('woocommerce_order_status_completed', [ __CLASS__, 'on_order_completed' ], 10, 1);
+			\add_action('woocommerce_order_status_pending', [ __CLASS__, 'on_order_pending' ], 10, 1);
+			\add_action('woocommerce_order_status_processing', [ __CLASS__, 'on_order_processing' ], 10, 1);
+			\add_action('woocommerce_order_status_on-hold', [ __CLASS__, 'on_order_on_hold' ], 10, 1);
+			\add_action('woocommerce_order_status_cancelled', [ __CLASS__, 'on_order_cancelled' ], 10, 1);
+			\add_action('woocommerce_order_status_refunded', [ __CLASS__, 'on_order_refunded' ], 10, 1);
+			\add_action('woocommerce_order_status_failed', [ __CLASS__, 'on_order_failed' ], 10, 1);
+		}
+
+		// P5：顧客觸發點（user_register 為 WordPress 核心 hook，不需 WC 軟依賴）
+		\add_action('user_register', [ __CLASS__, 'on_customer_registered' ], 10, 1);
+
+		// P5：訂閱觸發點（Powerhouse/WCS 軟依賴）
+		if ( \function_exists( 'wcs_get_subscription' ) ) {
+			\add_action('powerhouse_subscription_at_initial_payment_complete', [ __CLASS__, 'on_subscription_initial_payment' ], 10, 1);
+			\add_action('powerhouse_subscription_at_subscription_failed', [ __CLASS__, 'on_subscription_failed' ], 10, 1);
+			\add_action('powerhouse_subscription_at_subscription_success', [ __CLASS__, 'on_subscription_success' ], 10, 1);
+			\add_action('powerhouse_subscription_at_renewal_order_created', [ __CLASS__, 'on_subscription_renewal_order' ], 10, 1);
+			\add_action('powerhouse_subscription_at_end', [ __CLASS__, 'on_subscription_end' ], 10, 1);
+			\add_action('powerhouse_subscription_at_trial_end', [ __CLASS__, 'on_subscription_trial_end' ], 10, 1);
+			\add_action('powerhouse_subscription_at_end_of_prepaid_term', [ __CLASS__, 'on_subscription_prepaid_end' ], 10, 1);
 		}
 
 		// Context Keys filter
@@ -216,7 +236,7 @@ final class TriggerPointService {
 	 * @return void
 	 */
 	public static function on_line_postback_received( \LINE\Webhook\Model\Event $event ): void {
-		if (!($event instanceof \LINE\Webhook\Model\PostbackEvent)) {
+		if (!( $event instanceof \LINE\Webhook\Model\PostbackEvent )) {
 			return;
 		}
 		$context_callable_set = self::build_line_postback_context_callable_set($event);
@@ -242,7 +262,7 @@ final class TriggerPointService {
 		}
 
 		$postback      = $event->getPostback();
-		$postback_data = $postback ? ($postback->getData() ?? '') : '';
+		$postback_data = $postback ? ( $postback->getData() ?: '' ) : '';
 
 		// 嘗試解析 JSON 取出 action key，非 JSON 時 postback_action 為空字串
 		$postback_action = '';
@@ -253,14 +273,13 @@ final class TriggerPointService {
 				if (\is_array($decoded) && isset($decoded['action']) && \is_string($decoded['action'])) {
 					$postback_action = $decoded['action'];
 				}
-			} catch (\JsonException $e) {
-				// 非 JSON 格式，postback_action 維持空字串
+			} catch (\JsonException $e) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch -- 非 JSON 格式屬正常情況，postback_action 維持空字串
 			}
 		}
 
 		return [
-			'callable' => [self::class, 'resolve_line_postback_context'],
-			'params'   => [$line_user_id, 'postback', $postback_data, $postback_action],
+			'callable' => [ self::class, 'resolve_line_postback_context' ],
+			'params'   => [ $line_user_id, 'postback', $postback_data, $postback_action ],
 		];
 	}
 
@@ -428,6 +447,60 @@ final class TriggerPointService {
 		];
 	}
 
+	// ========== P5：顧客觸發點處理 ==========
+
+	/**
+	 * 新顧客註冊時觸發
+	 *
+	 * @param int $customer_id 新用戶 ID（WordPress user_register hook 第一個參數）
+	 * @return void
+	 */
+	public static function on_customer_registered( int $customer_id ): void {
+		$context_callable_set = self::build_customer_context_callable_set($customer_id);
+		\do_action(ETriggerPoint::CUSTOMER_REGISTERED->value, $context_callable_set);
+	}
+
+	/**
+	 * 建立顧客 context_callable_set
+	 *
+	 * @param int $user_id WordPress 用戶 ID
+	 * @return array<string, mixed> context_callable_set
+	 */
+	private static function build_customer_context_callable_set( int $user_id ): array {
+		return [
+			'callable' => [ self::class, 'resolve_customer_context' ],
+			'params'   => [ $user_id ],
+		];
+	}
+
+	/**
+	 * 解析顧客 context（Serializable Context Callable 目標方法）
+	 *
+	 * 延遲求值：每次呼叫時從 DB 讀取最新用戶資料，
+	 * 確保 WaitNode 延遲後仍能取得最新值。
+	 *
+	 * @param int $user_id WordPress 用戶 ID
+	 * @return array<string, string> context 陣列（5 個 keys），用戶不存在時回傳空陣列
+	 */
+	public static function resolve_customer_context( int $user_id ): array {
+		if ($user_id <= 0) {
+			return [];
+		}
+
+		$user = \get_user_by('id', $user_id);
+		if (!$user) {
+			return [];
+		}
+
+		return [
+			'customer_id'        => (string) $user_id,
+			'billing_email'      => (string) \get_user_meta($user_id, 'billing_email', true),
+			'billing_first_name' => (string) \get_user_meta($user_id, 'billing_first_name', true),
+			'billing_last_name'  => (string) \get_user_meta($user_id, 'billing_last_name', true),
+			'billing_phone'      => (string) \get_user_meta($user_id, 'billing_phone', true),
+		];
+	}
+
 	// ========== P4：WooCommerce 訂單觸發點處理 ==========
 
 	/**
@@ -442,6 +515,90 @@ final class TriggerPointService {
 			return;
 		}
 		\do_action(ETriggerPoint::ORDER_COMPLETED->value, $context_callable_set);
+	}
+
+	/**
+	 * WooCommerce 訂單待付款時觸發
+	 *
+	 * @param int $order_id WooCommerce 訂單 ID
+	 * @return void
+	 */
+	public static function on_order_pending( int $order_id ): void {
+		$context_callable_set = self::build_order_context_callable_set($order_id);
+		if ($context_callable_set === null) {
+			return;
+		}
+		\do_action(ETriggerPoint::ORDER_PENDING->value, $context_callable_set);
+	}
+
+	/**
+	 * WooCommerce 訂單處理中時觸發
+	 *
+	 * @param int $order_id WooCommerce 訂單 ID
+	 * @return void
+	 */
+	public static function on_order_processing( int $order_id ): void {
+		$context_callable_set = self::build_order_context_callable_set($order_id);
+		if ($context_callable_set === null) {
+			return;
+		}
+		\do_action(ETriggerPoint::ORDER_PROCESSING->value, $context_callable_set);
+	}
+
+	/**
+	 * WooCommerce 訂單保留中時觸發
+	 *
+	 * @param int $order_id WooCommerce 訂單 ID
+	 * @return void
+	 */
+	public static function on_order_on_hold( int $order_id ): void {
+		$context_callable_set = self::build_order_context_callable_set($order_id);
+		if ($context_callable_set === null) {
+			return;
+		}
+		\do_action(ETriggerPoint::ORDER_ON_HOLD->value, $context_callable_set);
+	}
+
+	/**
+	 * WooCommerce 訂單已取消時觸發
+	 *
+	 * @param int $order_id WooCommerce 訂單 ID
+	 * @return void
+	 */
+	public static function on_order_cancelled( int $order_id ): void {
+		$context_callable_set = self::build_order_context_callable_set($order_id);
+		if ($context_callable_set === null) {
+			return;
+		}
+		\do_action(ETriggerPoint::ORDER_CANCELLED->value, $context_callable_set);
+	}
+
+	/**
+	 * WooCommerce 訂單已退款時觸發
+	 *
+	 * @param int $order_id WooCommerce 訂單 ID
+	 * @return void
+	 */
+	public static function on_order_refunded( int $order_id ): void {
+		$context_callable_set = self::build_order_context_callable_set($order_id);
+		if ($context_callable_set === null) {
+			return;
+		}
+		\do_action(ETriggerPoint::ORDER_REFUNDED->value, $context_callable_set);
+	}
+
+	/**
+	 * WooCommerce 訂單失敗時觸發
+	 *
+	 * @param int $order_id WooCommerce 訂單 ID
+	 * @return void
+	 */
+	public static function on_order_failed( int $order_id ): void {
+		$context_callable_set = self::build_order_context_callable_set($order_id);
+		if ($context_callable_set === null) {
+			return;
+		}
+		\do_action(ETriggerPoint::ORDER_FAILED->value, $context_callable_set);
 	}
 
 	/**
@@ -475,7 +632,7 @@ final class TriggerPointService {
 	 * 確保 WaitNode 延遲後仍能取得最新值。
 	 *
 	 * @param int $order_id WooCommerce 訂單 ID
-	 * @return array<string, string> context 陣列（9 個 keys），訂單不存在時回傳空陣列
+	 * @return array<string, string> context 陣列（10 個 keys），訂單不存在時回傳空陣列
 	 */
 	public static function resolve_order_context( int $order_id ): array {
 		if ($order_id <= 0 || !\function_exists('wc_get_order')) {
@@ -483,7 +640,7 @@ final class TriggerPointService {
 		}
 
 		$order = \wc_get_order($order_id);
-		if (!$order) {
+		if (!( $order instanceof \WC_Order )) {
 			return [];
 		}
 
@@ -510,6 +667,158 @@ final class TriggerPointService {
 			'payment_method'     => $order->get_payment_method(),
 			'order_date'         => $order->get_date_created()?->format('Y-m-d') ?? '',
 			'billing_phone'      => $order->get_billing_phone(),
+			'order_status'       => $order->get_status(),
+		];
+	}
+
+	// ========== P5：訂閱觸發點處理 ==========
+
+	/**
+	 * 訂閱首次付款完成時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件（使用 mixed 規避 PHPStan 找不到 class 的問題）
+	 * @return void
+	 */
+	public static function on_subscription_initial_payment( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_initial_payment 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_INITIAL_PAYMENT->value, $context_callable_set);
+	}
+
+	/**
+	 * 訂閱失敗時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件
+	 * @return void
+	 */
+	public static function on_subscription_failed( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_failed 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_FAILED->value, $context_callable_set);
+	}
+
+	/**
+	 * 訂閱成功時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件
+	 * @return void
+	 */
+	public static function on_subscription_success( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_success 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_SUCCESS->value, $context_callable_set);
+	}
+
+	/**
+	 * 訂閱續訂訂單建立時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件
+	 * @return void
+	 */
+	public static function on_subscription_renewal_order( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_renewal_order 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_RENEWAL_ORDER->value, $context_callable_set);
+	}
+
+	/**
+	 * 訂閱結束時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件
+	 * @return void
+	 */
+	public static function on_subscription_end( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_end 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_END->value, $context_callable_set);
+	}
+
+	/**
+	 * 訂閱試用期結束時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件
+	 * @return void
+	 */
+	public static function on_subscription_trial_end( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_trial_end 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_TRIAL_END->value, $context_callable_set);
+	}
+
+	/**
+	 * 訂閱預付期結束時觸發
+	 *
+	 * @param mixed $subscription WC_Subscription 物件
+	 * @return void
+	 */
+	public static function on_subscription_prepaid_end( mixed $subscription ): void {
+		if (!( $subscription instanceof \WC_Subscription )) {
+			Plugin::logger('TriggerPointService：on_subscription_prepaid_end 傳入非 WC_Subscription 物件，跳過觸發', 'warning');
+			return;
+		}
+		$context_callable_set = self::build_subscription_context_callable_set($subscription->get_id());
+		\do_action(ETriggerPoint::SUBSCRIPTION_PREPAID_END->value, $context_callable_set);
+	}
+
+	/**
+	 * 建立訂閱 context_callable_set
+	 *
+	 * @param int $subscription_id WC_Subscription ID
+	 * @return array<string, mixed> context_callable_set
+	 */
+	private static function build_subscription_context_callable_set( int $subscription_id ): array {
+		return [
+			'callable' => [ self::class, 'resolve_subscription_context' ],
+			'params'   => [ $subscription_id ],
+		];
+	}
+
+	/**
+	 * 解析訂閱 context（Serializable Context Callable 目標方法）
+	 *
+	 * 延遲求值：每次呼叫時從 DB 讀取最新訂閱資料，
+	 * 確保 WaitNode 延遲後仍能取得最新值。
+	 *
+	 * @param int $subscription_id WC_Subscription ID
+	 * @return array<string, string> context 陣列（8 個 keys），訂閱不存在時回傳空陣列
+	 */
+	public static function resolve_subscription_context( int $subscription_id ): array {
+		if ($subscription_id <= 0 || !\function_exists('wcs_get_subscription')) {
+			return [];
+		}
+
+		$subscription = \wcs_get_subscription($subscription_id);
+		if (!( $subscription instanceof \WC_Subscription )) {
+			return [];
+		}
+
+		return [
+			'subscription_id'     => (string) $subscription->get_id(),
+			'subscription_status' => $subscription->get_status(),
+			'customer_id'         => (string) $subscription->get_customer_id(),
+			'billing_email'       => $subscription->get_billing_email(),
+			'billing_first_name'  => $subscription->get_billing_first_name(),
+			'billing_last_name'   => $subscription->get_billing_last_name(),
+			'order_total'         => (string) $subscription->get_total(),
+			'payment_method'      => $subscription->get_payment_method(),
 		];
 	}
 
@@ -568,6 +877,10 @@ final class TriggerPointService {
 			[
 				'key'   => 'billing_phone',
 				'label' => '帳單電話',
+			],
+			[
+				'key'   => 'order_status',
+				'label' => '訂單狀態',
 			],
 		];
 
@@ -665,24 +978,98 @@ final class TriggerPointService {
 			],
 		];
 
+		$customer_keys = [
+			[
+				'key'   => 'customer_id',
+				'label' => '客戶 ID',
+			],
+			[
+				'key'   => 'billing_email',
+				'label' => '帳單 Email',
+			],
+			[
+				'key'   => 'billing_first_name',
+				'label' => '帳單名字',
+			],
+			[
+				'key'   => 'billing_last_name',
+				'label' => '帳單姓氏',
+			],
+			[
+				'key'   => 'billing_phone',
+				'label' => '帳單電話',
+			],
+		];
+
+		$subscription_keys = [
+			[
+				'key'   => 'subscription_id',
+				'label' => '訂閱 ID',
+			],
+			[
+				'key'   => 'subscription_status',
+				'label' => '訂閱狀態',
+			],
+			[
+				'key'   => 'customer_id',
+				'label' => '客戶 ID',
+			],
+			[
+				'key'   => 'billing_email',
+				'label' => '帳單 Email',
+			],
+			[
+				'key'   => 'billing_first_name',
+				'label' => '帳單名字',
+			],
+			[
+				'key'   => 'billing_last_name',
+				'label' => '帳單姓氏',
+			],
+			[
+				'key'   => 'order_total',
+				'label' => '訂單金額',
+			],
+			[
+				'key'   => 'payment_method',
+				'label' => '付款方式',
+			],
+		];
+
 		self::$context_keys_map = [
-			ETriggerPoint::ORDER_COMPLETED->value        => $order_keys,
+			ETriggerPoint::ORDER_COMPLETED->value          => $order_keys,
+			ETriggerPoint::ORDER_PENDING->value            => $order_keys,
+			ETriggerPoint::ORDER_PROCESSING->value         => $order_keys,
+			ETriggerPoint::ORDER_ON_HOLD->value            => $order_keys,
+			ETriggerPoint::ORDER_CANCELLED->value          => $order_keys,
+			ETriggerPoint::ORDER_REFUNDED->value           => $order_keys,
+			ETriggerPoint::ORDER_FAILED->value             => $order_keys,
 
-			ETriggerPoint::REGISTRATION_APPROVED->value  => $registration_keys,
-			ETriggerPoint::REGISTRATION_REJECTED->value  => $registration_keys,
-			ETriggerPoint::REGISTRATION_CANCELLED->value => $registration_keys,
-			ETriggerPoint::REGISTRATION_FAILED->value    => $registration_keys,
-			ETriggerPoint::REGISTRATION_CREATED->value   => $registration_keys,
+			ETriggerPoint::REGISTRATION_APPROVED->value    => $registration_keys,
+			ETriggerPoint::REGISTRATION_REJECTED->value    => $registration_keys,
+			ETriggerPoint::REGISTRATION_CANCELLED->value   => $registration_keys,
+			ETriggerPoint::REGISTRATION_FAILED->value      => $registration_keys,
+			ETriggerPoint::REGISTRATION_CREATED->value     => $registration_keys,
 
-			ETriggerPoint::LINE_FOLLOWED->value          => $line_keys,
-			ETriggerPoint::LINE_UNFOLLOWED->value        => $line_keys,
-			ETriggerPoint::LINE_MESSAGE_RECEIVED->value  => $line_message_keys,
-			ETriggerPoint::LINE_POSTBACK_RECEIVED->value => $line_postback_keys,
+			ETriggerPoint::LINE_FOLLOWED->value            => $line_keys,
+			ETriggerPoint::LINE_UNFOLLOWED->value          => $line_keys,
+			ETriggerPoint::LINE_MESSAGE_RECEIVED->value    => $line_message_keys,
+			ETriggerPoint::LINE_POSTBACK_RECEIVED->value   => $line_postback_keys,
 
-			ETriggerPoint::WORKFLOW_COMPLETED->value     => $workflow_keys,
-			ETriggerPoint::WORKFLOW_FAILED->value        => $workflow_keys,
+			ETriggerPoint::WORKFLOW_COMPLETED->value       => $workflow_keys,
+			ETriggerPoint::WORKFLOW_FAILED->value          => $workflow_keys,
 
-			ETriggerPoint::USER_TAGGED->value            => $user_tagged_keys,
+			ETriggerPoint::USER_TAGGED->value              => $user_tagged_keys,
+
+			ETriggerPoint::CUSTOMER_REGISTERED->value      => $customer_keys,
+
+			ETriggerPoint::SUBSCRIPTION_INITIAL_PAYMENT->value => $subscription_keys,
+			ETriggerPoint::SUBSCRIPTION_FAILED->value      => $subscription_keys,
+			ETriggerPoint::SUBSCRIPTION_SUCCESS->value     => $subscription_keys,
+			ETriggerPoint::SUBSCRIPTION_RENEWAL_ORDER->value => $subscription_keys,
+			ETriggerPoint::SUBSCRIPTION_END->value         => $subscription_keys,
+			ETriggerPoint::SUBSCRIPTION_TRIAL_END->value   => $subscription_keys,
+			ETriggerPoint::SUBSCRIPTION_PREPAID_END->value => $subscription_keys,
 		];
 
 		return self::$context_keys_map;

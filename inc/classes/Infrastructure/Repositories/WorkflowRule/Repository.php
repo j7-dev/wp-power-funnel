@@ -128,6 +128,8 @@ final class Repository {
 			'activity',
 			'user_behavior',
 			'woocommerce',
+			'customer',
+			'subscription',
 		];
 
 		/** @var array<string, string> $group_label_map 群組 key => 中文標籤 */
@@ -139,6 +141,8 @@ final class Repository {
 			'activity'         => '活動時間',
 			'user_behavior'    => '用戶行為',
 			'woocommerce'      => 'WooCommerce',
+			'customer'         => '顧客行為',
+			'subscription'     => '訂閱',
 		];
 
 		/** @var TriggerPointGroupDTO[] $result */

@@ -14,7 +14,6 @@ use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\Wait
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\WaitUntilNode;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\TimeWindowNode;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\YesNoBranchNode;
-use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\SplitBranchNode;
 use J7\PowerFunnel\Infrastructure\Repositories\WorkflowRule\NodeDefinitions\TagUserNode;
 
 /** Class Register */
@@ -164,7 +163,6 @@ final class Register {
 			new WaitUntilNode(),
 			new TimeWindowNode(),
 			new YesNoBranchNode(),
-			new SplitBranchNode(),
 			new TagUserNode(),
 		];
 		foreach ($definitions as $definition) {
