@@ -46,7 +46,9 @@ if (!function_exists('as_schedule_single_action')) {
      * @return int 虛擬 action ID
      */
     function as_schedule_single_action(int $timestamp, string $hook, array $args = [], string $group = '', bool $unique = false): int {
-        return 0;
+        // 回傳 1 代表「排程成功」，模擬 Action Scheduler 成功建立排程並回傳 action ID。
+        // WaitNode / WaitUntilNode / TimeWindowNode 依此判斷是否排程成功（非零即成功）。
+        return 1;
     }
 }
 
@@ -271,6 +273,12 @@ if (!function_exists('wc_get_order')) {
     function wc_get_order( $order_id ): WC_Order|false {
         return WC_Order_Stub_Registry::get( (int) $order_id );
     }
+}
+
+// 設定環境類型為 local，使 DTO 在驗證失敗時拋出例外（而非靜默記錄）。
+// 這讓 RecordNodeExecutedAtTest::test_缺少node_id時記錄失敗 等測試能正確捕捉到驗證例外。
+if (!defined('WP_ENVIRONMENT_TYPE')) {
+    define('WP_ENVIRONMENT_TYPE', 'local');
 }
 
 // 取得 WP 測試路徑。
