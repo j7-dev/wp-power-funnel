@@ -19,7 +19,6 @@ enum ENode: string {
 	case WAIT_UNTIL    = 'wait_until';
 	case TIME_WINDOW   = 'time_window';
 	case YES_NO_BRANCH = 'yes_no_branch';
-	case SPILT_BRANCH  = 'split_branch';
 	case TAG_USER      = 'tag_user';
 
 	/**
@@ -37,7 +36,6 @@ enum ENode: string {
 			self::WAIT_UNTIL => '等待至',
 			self::TIME_WINDOW => '等待至時間窗口',
 			self::YES_NO_BRANCH => '是/否分支',
-			self::SPILT_BRANCH => '分支',
 			self::TAG_USER => '標籤用戶',
 		};
 	}
@@ -57,7 +55,6 @@ enum ENode: string {
 			self::WAIT_UNTIL => '等待至',
 			self::TIME_WINDOW => '等待至時間窗口',
 			self::YES_NO_BRANCH => '是/否分支',
-			self::SPILT_BRANCH => '分支',
 			self::TAG_USER => '標籤用戶',
 		};
 	}
@@ -87,7 +84,6 @@ enum ENode: string {
 			self::WAIT_UNTIL,
 			self::TIME_WINDOW,
 			self::YES_NO_BRANCH,
-			self::SPILT_BRANCH,
 			self::TAG_USER => ENodeType::ACTION,
 		};
 	}
@@ -114,7 +110,6 @@ enum ENode: string {
 			self::WAIT_UNTIL => '__return_true',
 			self::TIME_WINDOW => '__return_true',
 			self::YES_NO_BRANCH => '__return_true',
-			self::SPILT_BRANCH => '__return_true',
 			self::TAG_USER => '__return_true',
 		};
 	}
