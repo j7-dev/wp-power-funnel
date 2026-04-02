@@ -75,14 +75,14 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Example: get_trigger_points() 回傳 7 個分組，固定順序
+	 * Example: get_trigger_points() 回傳 9 個分組，固定順序
 	 *
 	 * @group happy
 	 */
 	public function test_get_trigger_points_回傳7個分組且順序固定(): void {
 		$groups = Repository::get_trigger_points();
 
-		$this->assertCount(7, $groups, '應有 7 個分組');
+		$this->assertCount(9, $groups, '應有 9 個分組');
 
 		$expected_order = [
 			'registration',
@@ -92,6 +92,8 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 			'activity',
 			'user_behavior',
 			'woocommerce',
+			'customer',
+			'subscription',
 		];
 
 		$actual_order = \array_map(fn( TriggerPointGroupDTO $g ) => $g->group, $groups);
@@ -116,7 +118,7 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 			$total_items += \count($group->items);
 		}
 
-		$this->assertSame(20, $total_items, '總項目數應為 20（所有 case 減去 REGISTRATION_CREATED）');
+		$this->assertSame(34, $total_items, '總項目數應為 34（所有 case 減去 REGISTRATION_CREATED）');
 	}
 
 	/**
@@ -157,6 +159,8 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 			'activity'        => '活動時間',
 			'user_behavior'   => '用戶行為',
 			'woocommerce'     => 'WooCommerce',
+			'customer'        => '顧客行為',
+			'subscription'    => '訂閱',
 		];
 
 		foreach ($groups as $group) {
@@ -191,7 +195,9 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 			'workflow'        => 2,
 			'activity'        => 3,
 			'user_behavior'   => 2,
-			'woocommerce'     => 1,
+			'woocommerce'     => 7,
+			'customer'        => 1,
+			'subscription'    => 7,
 		];
 
 		foreach ($expected_counts as $group_key => $expected_count) {
@@ -330,7 +336,7 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 		$this->assertIsArray($data);
 		$this->assertArrayHasKey('data', $data);
 		$this->assertIsArray($data['data']);
-		$this->assertCount(7, $data['data'], 'API 應回傳 7 個群組');
+		$this->assertCount(9, $data['data'], 'API 應回傳 9 個群組');
 
 		foreach ($data['data'] as $group) {
 			$this->assertIsArray($group, '每個群組應為陣列');
@@ -395,6 +401,8 @@ class QueryGroupedTriggerPointsTest extends IntegrationTestCase {
 			'activity',
 			'user_behavior',
 			'woocommerce',
+			'customer',
+			'subscription',
 		];
 
 		$this->assertSame(

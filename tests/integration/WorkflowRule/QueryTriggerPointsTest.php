@@ -95,7 +95,7 @@ class QueryTriggerPointsTest extends IntegrationTestCase {
 
 	/**
 	 * Feature: 查詢觸發條件列表
-	 * Example: 回傳 7 個分組的觸發點清單（不含 REGISTRATION_CREATED）
+	 * Example: 回傳 9 個分組的觸發點清單（不含 REGISTRATION_CREATED）
 	 *
 	 * @group happy
 	 */
@@ -116,7 +116,7 @@ class QueryTriggerPointsTest extends IntegrationTestCase {
 		$this->assertIsArray($data, 'response data 應為陣列');
 		$this->assertArrayHasKey('data', $data, 'response 應有 data 欄位');
 		$this->assertIsArray($data['data'], 'data.data 應為陣列');
-		$this->assertCount(7, $data['data'], '應有 7 個分組');
+		$this->assertCount(9, $data['data'], '應有 9 個分組');
 
 		// And 不包含 REGISTRATION_CREATED
 		$all_hooks = [];
@@ -131,8 +131,8 @@ class QueryTriggerPointsTest extends IntegrationTestCase {
 			'回應不應包含已棄用的 REGISTRATION_CREATED'
 		);
 
-		// 驗證回應中共有 20 個觸發點
-		$this->assertCount(20, $all_hooks, '應共有 20 個觸發點');
+		// 驗證回應中共有 34 個觸發點
+		$this->assertCount(34, $all_hooks, '應共有 34 個觸發點');
 	}
 
 	/**

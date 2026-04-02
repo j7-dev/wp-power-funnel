@@ -59,10 +59,10 @@ class OrderContextResolveTest extends IntegrationTestCase {
 		parent::tear_down();
 	}
 
-	// ========== Rule: resolve_order_context 應回傳 9 個訂單關鍵欄位 ==========
+	// ========== Rule: resolve_order_context 應回傳 10 個訂單關鍵欄位 ==========
 
 	/**
-	 * 訂單存在時回傳完整 context（9 個 keys）
+	 * 訂單存在時回傳完整 context（10 個 keys，含 order_status）
 	 *
 	 * @group happy
 	 */
@@ -72,7 +72,7 @@ class OrderContextResolveTest extends IntegrationTestCase {
 		// When 系統呼叫 resolve_order_context(1001)
 		$context = TriggerPointService::resolve_order_context(1001);
 
-		// Then 回傳結果應包含 9 個 keys
+		// Then 回傳結果應包含 10 個 keys
 		$expected_keys = [
 			'order_id',
 			'order_total',
@@ -83,6 +83,7 @@ class OrderContextResolveTest extends IntegrationTestCase {
 			'payment_method',
 			'order_date',
 			'billing_phone',
+			'order_status',
 		];
 
 		foreach ($expected_keys as $key) {
@@ -94,9 +95,9 @@ class OrderContextResolveTest extends IntegrationTestCase {
 		}
 
 		$this->assertCount(
-			9,
+			10,
 			$context,
-			'context 應恰好包含 9 個 keys'
+			'context 應恰好包含 10 個 keys'
 		);
 	}
 

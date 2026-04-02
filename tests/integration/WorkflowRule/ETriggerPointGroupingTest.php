@@ -171,7 +171,7 @@ class ETriggerPointGroupingTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * Example: 所有 21 個 case 均有有效的 group 值
+	 * Example: 所有 35 個 case 均有有效的 group 值
 	 *
 	 * @group happy
 	 */
@@ -184,10 +184,12 @@ class ETriggerPointGroupingTest extends IntegrationTestCase {
 			'activity',
 			'user_behavior',
 			'woocommerce',
+			'customer',
+			'subscription',
 		];
 
 		$cases = ETriggerPoint::cases();
-		$this->assertCount(21, $cases, 'ETriggerPoint 應有 21 個 case');
+		$this->assertCount(35, $cases, 'ETriggerPoint 應有 35 個 case');
 
 		foreach ($cases as $case) {
 			$group = $case->group();
@@ -216,6 +218,8 @@ class ETriggerPointGroupingTest extends IntegrationTestCase {
 			'activity'        => '活動時間',
 			'user_behavior'   => '用戶行為',
 			'woocommerce'     => 'WooCommerce',
+			'customer'        => '顧客行為',
+			'subscription'    => '訂閱',
 		];
 
 		// 每個群組至少測試一個代表 case
@@ -227,6 +231,8 @@ class ETriggerPointGroupingTest extends IntegrationTestCase {
 			ETriggerPoint::ACTIVITY_STARTED,
 			ETriggerPoint::USER_TAGGED,
 			ETriggerPoint::ORDER_COMPLETED,
+			ETriggerPoint::CUSTOMER_REGISTERED,
+			ETriggerPoint::SUBSCRIPTION_INITIAL_PAYMENT,
 		];
 
 		foreach ($representative_cases as $case) {
