@@ -4,7 +4,7 @@
  * Plugin Name:       Power Funnel
  * Plugin URI:        https://github.com/zenbuapps/wp-power-funnel
  * Description:       自動抓取 Youtube 直播場次，讓用戶可以透過 LINE 報名
- * Version:           0.0.1
+ * Version:           0.0.63
  * Requires at least: 5.7
  * Requires PHP:      8.1
  * Author:            J7
