@@ -62,9 +62,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           MARKER="<!-- issue-creator-expanded -->"
-          EXISTING=$(gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
-            --paginate --jq '.[].body' 2>/dev/null | grep -c "$MARKER" || echo "0")
-          if [ "$EXISTING" -gt "0" ]; then
+          # 注意：`grep -c ... || echo "0"` 會在 no-match 時產生 "0\n0"（grep 自身
+          # 會輸出 0 並 exit 1），導致後續整數比較噴 "integer expression expected"。
+          # 改用 grep -F（固定字串）+ 管道後接計算，確保輸出永遠只有一行整數。
+          COMMENTS_BODY=$(gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            --paginate --jq '.[].body' 2>/dev/null || true)
+          EXISTING=$(printf '%s' "$COMMENTS_BODY" | grep -cF "$MARKER" || true)
+          EXISTING=${EXISTING:-0}
+          if [ "${EXISTING}" -gt 0 ]; then
             echo "already_expanded=true" >> $GITHUB_OUTPUT
             echo "⚠️ 此 Issue 已經展開過需求，跳過重複執行"
           else
