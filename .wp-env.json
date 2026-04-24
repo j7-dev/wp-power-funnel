@@ -27,6 +27,6 @@
     "wp-content/uploads": "./tests/e2e/.uploads"
   },
   "lifecycleScripts": {
-    "afterStart": "npx wp-env run cli --env-cwd=wp-content/plugins/create-power-funnel -- composer install --no-interaction 2>/dev/null || true; npx @wordpress/env run cli -- wp option update blogname powerfunnelE2E && npx @wordpress/env run cli -- wp option update blogdescription E2ETesting && npx @wordpress/env run cli -- wp rewrite structure /%postname%/ && npx @wordpress/env run cli -- wp rewrite flush && npx @wordpress/env run cli -- wp language core install zh_TW && npx @wordpress/env run cli -- wp site switch-language zh_TW"
+    "afterStart": "npx wp-env run cli --env-cwd=wp-content/plugins/power-funnel -- composer install --no-interaction 2>/dev/null || true; npx @wordpress/env run cli -- wp option update blogname powerfunnelE2E && npx @wordpress/env run cli -- wp option update blogdescription E2ETesting && npx @wordpress/env run cli -- wp rewrite structure /%postname%/ && npx @wordpress/env run cli -- wp rewrite flush && npx @wordpress/env run cli -- wp language core install zh_TW && npx @wordpress/env run cli -- wp site switch-language zh_TW"
   }
 }
