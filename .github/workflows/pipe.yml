@@ -1079,8 +1079,13 @@ jobs:
           BUNNY_STORAGE_ZONE: ${{ secrets.BUNNY_STORAGE_ZONE }}
           BUNNY_STORAGE_PASSWORD: ${{ secrets.BUNNY_STORAGE_PASSWORD }}
           BUNNY_CDN_URL: ${{ secrets.BUNNY_CDN_URL }}
+          # 使用 claude job 實際工作的 branch（issue/{N}-*），而非 default branch。
+          # 因為在 issue_comment / pull_request_review_comment 觸發下，
+          # github.ref_name 永遠指向 default branch（master），會導致所有 issue 的
+          # 媒體都集中到 ci/master/smoke-test/ 互相覆蓋。
+          CLAUDE_BRANCH: ${{ needs.claude.outputs.branch_name }}
         run: |
-          BRANCH_DIR=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          BRANCH_DIR=$(echo "${CLAUDE_BRANCH:-${{ github.ref_name }}}" | sed 's/[^a-zA-Z0-9._-]/-/g')
           bash .github/scripts/upload-to-bunny.sh /tmp/smoke-media "ci/${BRANCH_DIR}/smoke-test"
 
       - name: 上傳 Smoke Test 媒體 Artifact (備份)
