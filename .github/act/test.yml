@@ -1,13 +1,13 @@
 # 本地 act 測試用 — 驗證多 job 結構（job 依賴鏈 + artifact 傳遞 + build）
 # Windows 用法（需先建立 artifact 目錄）:
 #   mkdir -p "$env:TEMP/act-artifacts"
-#   act workflow_dispatch -W .github/workflows/act-test.yml \
+#   act workflow_dispatch -W .github/act/test.yml \
 #     --container-architecture linux/amd64 \
 #     -P ubuntu-latest=catthehacker/ubuntu:act-latest \
 #     --container-options "--privileged" \
 #     --artifact-server-path "C:/Users/$env:USERNAME/AppData/Local/Temp/act-artifacts"
 #
-# ⚠️ 此檔案不應 commit，僅供本地測試
+# ⚠️ 此檔案刻意置於 .github/act/ 而非 .github/workflows/，避免 GitHub 誤觸發，僅供本地測試
 # NOTE: act on Windows 的 artifact server v4 有 bug，artifact 下載會失敗但不影響結構驗證
 #
 # 測試範圍（刻意 mock 掉 wp-env 和 Claude Code，只驗結構）：
@@ -60,6 +60,8 @@ jobs:
 
       - name: 設定 pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: 安裝 Node 依賴
         run: pnpm install
@@ -120,6 +122,8 @@ jobs:
 
       - name: 設定 pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: 安裝 Node 依賴
         run: pnpm install
