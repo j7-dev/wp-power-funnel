@@ -78,9 +78,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # 取得 issue number
-          if [ "$EVENT_NAME" = "issues" ]; then
-            ISSUE_NUM="$ISSUE_NUMBER"
-          elif [ "$EVENT_NAME" = "issue_comment" ]; then
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
             ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$' || echo "")
             if [ -z "$ISSUE_NUM" ]; then
               ISSUE_NUM="$ISSUE_NUMBER"
@@ -135,9 +133,7 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
           REVIEW_BODY: ${{ github.event.review.body }}
         run: |
-          if [ "${{ github.event_name }}" = "issues" ]; then
-            COMMENT="$ISSUE_BODY"
-          elif [ "${{ github.event_name }}" = "pull_request_review" ]; then
+          if [ "${{ github.event_name }}" = "pull_request_review" ]; then
             COMMENT="$REVIEW_BODY"
           else
             COMMENT="$COMMENT_BODY"
@@ -477,8 +473,12 @@ jobs:
             echo "ℹ️ Local 與 remote 已同步，無需推送"
           else
             echo "🔄 偵測到 local commits 未推送（local: ${LOCAL_SHA:0:7}, remote: ${REMOTE_SHA:0:7}）"
-            git push origin "HEAD:${BRANCH}" --force-with-lease
-            echo "✅ 兜底推送完成"
+            if git push origin "HEAD:${BRANCH}" --force-with-lease; then
+              echo "✅ 兜底推送完成"
+            else
+              echo "::warning::push failed, manual intervention required (branch=${BRANCH}, local=${LOCAL_SHA:0:7}, remote=${REMOTE_SHA:0:7})"
+              exit 0
+            fi
           fi
 
   # ══════════════════════════════════════════════════
@@ -1295,10 +1295,8 @@ jobs:
             AI_BADGE="⏭️ AI 驗收狀態: ${AI_OUTCOME}"
           fi
 
-          # 建立 PR
-          gh pr create \
-            --title "$PR_TITLE" \
-            --body "$(cat <<EOF
+          # 將 PR body 寫入檔案（避免 heredoc 內 $ 字元被 shell 展開破版）
+          cat > /tmp/pr-body.md <<EOF
           ## Summary
           ${CLOSE_LINE}
 
@@ -1318,7 +1316,11 @@ jobs:
           ---
           *🤖 此 PR 由 Claude Code CI 自動建立*
           EOF
-          )" \
+
+          # 建立 PR
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body-file /tmp/pr-body.md \
             --base master \
             --head "$CURRENT_BRANCH"
 

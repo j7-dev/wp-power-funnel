@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build plugin and create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 設定 pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: 設定 PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+
+      - name: 強制 Git 使用 HTTPS
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+
+      - name: 安裝 Node 依賴
+        run: pnpm install
+
+      - name: 安裝 Composer 依賴（production）
+        run: composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
+
+      - name: 建置前端
+        run: pnpm run build
+
+      - name: 打包 plugin zip
+        run: pnpm run zip
+
+      - name: 定位 zip 檔案
+        id: locate
+        run: |
+          ZIP_PATH=$(find release -maxdepth 2 -name '*.zip' -type f | head -1)
+          if [ -z "$ZIP_PATH" ]; then
+            echo "::error::找不到 release zip 檔案"
+            exit 1
+          fi
+          echo "zip_path=$ZIP_PATH" >> $GITHUB_OUTPUT
+          echo "zip_name=$(basename "$ZIP_PATH")" >> $GITHUB_OUTPUT
+          echo "✅ 找到 zip: $ZIP_PATH"
+
+      - name: 上傳 build artifact（保留備份）
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-zip-${{ github.ref_name }}
+          path: ${{ steps.locate.outputs.zip_path }}
+          retention-days: 30
+
+      - name: 建立 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          ZIP_PATH: ${{ steps.locate.outputs.zip_path }}
+        run: |
+          # 寫入 release notes 到檔案（避免 heredoc 內 $ 字元展開）
+          cat > /tmp/release-notes.md <<EOF
+          ## Power Funnel ${TAG}
+
+          自動化建置產出：\`${{ steps.locate.outputs.zip_name }}\`
+
+          ### 安裝方式
+          1. 下載下方附件的 zip 檔
+          2. 於 WordPress 後台「外掛 > 安裝外掛 > 上傳外掛」安裝
+          3. 啟用後依照設定頁面指示完成初始化
+
+          ---
+          *🤖 此 Release 由 GitHub Actions 自動建立*
+          EOF
+
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file /tmp/release-notes.md \
+            "$ZIP_PATH"
+
+          echo "✅ Release $TAG 建立完成"
