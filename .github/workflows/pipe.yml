@@ -9,7 +9,7 @@ on:
     types: [submitted]
 
 concurrency:
-  group: claude-pipe-${{ github.event.issue.number || github.event.pull_request.number }}-${{ github.event.sender.type }}
+  group: claude-pipe-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -550,7 +550,7 @@ jobs:
           version: 10
 
       - name: 安裝 Node 依賴
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: 安裝 Composer 依賴（主機端）
         run: composer install --no-interaction --prefer-dist
@@ -619,17 +619,9 @@ jobs:
         id: claude_fix_1
         if: steps.test_cycle_1.outcome == 'failure'
         continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        uses: ./.github/actions/claude-retry
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          additional_permissions: |
-            actions: read
-          settings: .claude/settings.json
-          plugin_marketplaces: |
-            https://github.com/j7-dev/wp-workflows.git
-          plugins: |
-            wp-workflows@wp-workflows
           prompt: |
             PHPUnit 整合測試失敗了。請根據以下測試輸出修復程式碼。
 
@@ -645,10 +637,8 @@ jobs:
             4. 如果問題是環境或權限問題（如 uploads 目錄不可寫），可修改 .wp-env.json 或測試 bootstrap
             5. 此專案使用 Strauss (namespace prefix `PowerFunnel\`)，如涉及 vendor 套件命名衝突請注意
             6. 修復後請 commit 變更
-          claude_args: |
-            --dangerously-skip-permissions
-            --max-turns 60
-            --model opus
+          max_turns: '60'
+          model: opus
 
       # ── 測試循環 2/3 ─────────────────────────────────
       - name: "PHPUnit 測試 (cycle 2/3)"
@@ -673,17 +663,9 @@ jobs:
         id: claude_fix_2
         if: steps.test_cycle_2.outcome == 'failure'
         continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        uses: ./.github/actions/claude-retry
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          additional_permissions: |
-            actions: read
-          settings: .claude/settings.json
-          plugin_marketplaces: |
-            https://github.com/j7-dev/wp-workflows.git
-          plugins: |
-            wp-workflows@wp-workflows
           prompt: |
             PHPUnit 整合測試第二次仍然失敗。請更仔細分析根本原因並修復。
 
@@ -699,10 +681,8 @@ jobs:
             4. 如果問題是環境或權限問題（如 uploads 目錄不可寫），可修改 .wp-env.json 或測試 bootstrap
             5. 如果前一次修復方向錯誤，請大膽回退（git revert）並嘗試完全不同的方向
             6. 修復後請 commit 變更
-          claude_args: |
-            --dangerously-skip-permissions
-            --max-turns 60
-            --model opus
+          max_turns: '60'
+          model: opus
 
       # ── 測試循環 3/3（最終測試，無修復）───────────────
       - name: "PHPUnit 測試 (cycle 3/3 - final)"
@@ -1191,9 +1171,19 @@ jobs:
               combinedMd += `<details>\n<summary><b>${groupTitle}</b></summary>\n\n${groupContent}</details>\n\n`;
             }
 
+            // run_ai_acceptance 可能是 success / failure / skipped（條件 detect_smoke.needed 未觸發時）
             const smokeStatus = '${{ steps.run_ai_acceptance.outcome }}';
-            const emoji = smokeStatus === 'success' ? '✅' : '⚠️';
-            const statusText = smokeStatus === 'success' ? '通過' : '異常';
+            let emoji, statusText;
+            if (smokeStatus === 'success') {
+              emoji = '✅';
+              statusText = '通過';
+            } else if (smokeStatus === 'skipped' || smokeStatus === '') {
+              emoji = 'ℹ️';
+              statusText = '未觸發';
+            } else {
+              emoji = '⚠️';
+              statusText = '異常';
+            }
 
             // processedReport 為主要內容（含 CDN 圖片預覽）；combinedMd 僅在 report 缺失時作為 fallback
             const mainContent = processedReport
@@ -1225,9 +1215,9 @@ jobs:
               });
             }
 
-      # ── 自動建立 PR（AI 驗收未失敗才發）─────────────────
+      # ── 自動建立 PR（測試綠燈 + AI 驗收未失敗才發）─────────────────
       - name: 自動建立 PR
-        if: steps.run_ai_acceptance.outcome != 'failure'
+        if: steps.run_ai_acceptance.outcome != 'failure' && steps.final_result.outputs.status == 'passed'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
