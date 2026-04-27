@@ -483,6 +483,8 @@ jobs:
             echo "ℹ️ Local 與 remote 已同步，無需推送"
           else
             echo "🔄 偵測到 local commits 未推送（local: ${LOCAL_SHA:0:7}, remote: ${REMOTE_SHA:0:7}）"
+            # 重新設定 git 認證（claude-code-action post-cleanup 會移除 auth header）
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
             if git push origin "HEAD:${BRANCH}" --force-with-lease; then
               echo "✅ 兜底推送完成"
             else
