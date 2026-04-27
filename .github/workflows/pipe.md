@@ -33,7 +33,7 @@
 
 | output | 意義 |
 |--------|------|
-| `branch_name` / `issue_num` | 本輪 `issue/{N}-{timestamp}` 分支與 issue 編號 |
+| `branch_name` / `issue_num` | 本輪 `issue/{N}` 分支與 issue 編號（向下相容舊格式 `issue/{N}-*`） |
 | `initial_sha` | 進入 workflow 時的 HEAD（用於偵測變更） |
 | `claude_ok` | clarifier + (planner/tdd) 整體成敗；skipped 視為 OK |
 | `has_changes` | 是否有 commit 或 working tree 變動 |
@@ -45,12 +45,12 @@
 
 | 段 | 核心動作 |
 |----|---------|
-| **A** 前置 | eyes reaction → checkout → `resolve_branch`（找或建 `issue/{N}-*`）→ HTTPS → `save_sha` |
+| **A** 前置 | eyes reaction → checkout → `resolve_branch`（優先找 `issue/{N}`，fallback `issue/{N}-*`，新建 `issue/{N}`）→ HTTPS → `save_sha` |
 | **B** 模式解析 | `parse_agent` 設 `PIPELINE_MODE`/`FULL_AUTO_MODE`/`PR_MODE` → `fetch_context`（issue 上下文）→ 組 clarifier prompt（`PR_MODE=true` 則跳過） |
-| **C** Clarifier | `claude-retry` composite action，agent=`wp-workflows:clarifier`，`max_turns=200`(pipeline)/`120`(interactive)；`PR_MODE=true` 跳過 |
-| **D** 橋接 | `detect_specs`（比對 `specs/` diff）→ `dynamic_upgrade`（interactive + 生成 specs → 升級 pipeline_mode）→ 通知留言 |
-| **E** Planner | `specs_available && pipeline_mode` 才跑；agent=`wp-workflows:planner`，`max_turns=120` |
-| **F** TDD | `planner_ok=true` 才跑；agent=`wp-workflows:tdd-coordinator`，`max_turns=200` |
+| **C** Clarifier | `claude-retry` composite action，agent=`zenbu-powers:clarifier`，`max_turns=200`(pipeline)/`120`(interactive)；`PR_MODE=true` 跳過 |
+| **D** 橋接 | `detect_specs`（比對 `specs/` diff，early exit 時設 `specs_available=false`）→ `dynamic_upgrade`（非 PR 模式 + interactive + 生成 specs → 升級 pipeline_mode）→ 通知留言 |
+| **E** Planner | `specs_available && pipeline_mode` 才跑；agent=`zenbu-powers:planner`，`max_turns=120` |
+| **F** TDD | `planner_ok=true` 才跑；agent=`zenbu-powers:tdd-coordinator`，`max_turns=200` |
 | **G** 收尾 | `check_result` 匯整 outputs → 若有變更 `git push --force-with-lease` 兜底推送 |
 
 ---
@@ -77,7 +77,7 @@ run_integration_tests == 'true' &&
 | **H** 環境 | checkout(branch_name) → Node 20 / pnpm / composer → 建 uploads → wp-env start（3 次重試，delay 15/45/90s，含 unhealthy 容器 recovery） |
 | **I** PHPUnit 3 循環 | `test_cycle_1` 失敗 → `claude_fix_1` → `test_cycle_2` 失敗 → `claude_fix_2` → `test_cycle_3`（final，無修復）。所有步驟 `continue-on-error: true`，fix 走 `anthropics/claude-code-action@v1`。**指令**：`npx wp-env run tests-cli --env-cwd=wp-content/plugins/power-funnel vendor/bin/phpunit --testdox` |
 | **J** 彙整 | `final_result` parse PHPUnit summary（`OK (...)` 或 `Tests: ...`）→ 發測試結果留言 |
-| **K** AI 驗收 | `detect_smoke` 檢查 diff 有無動到 `js/src/`、`inc/templates/`、`inc/assets/`、`inc/classes/` → 建置前端（`pnpm run build`） → Playwright 裝 chromium → `run_ai_acceptance`（agent=`wp-workflows:browser-tester`，prompt 涵蓋 admin SPA + 4 個 `pf_*` CPT 入口 + ReactFlow / LIFF 業務情境） |
+| **K** AI 驗收 | `detect_smoke` 檢查 diff 有無動到 `js/src/`、`inc/templates/`、`inc/assets/`、`inc/classes/` → 建置前端（`pnpm run build`） → Playwright 裝 chromium → `run_ai_acceptance`（agent=`zenbu-powers:browser-tester`，prompt 涵蓋 admin SPA + 4 個 `pf_*` CPT 入口 + ReactFlow / LIFF 業務情境） |
 | **L** 媒體 | `collect_smoke_media` 集中到 `/tmp/smoke-media` → 上傳 Bunny CDN（`ci/{branch}/smoke-test`）→ Artifact 備份 7 天 → 發 Smoke Test 報告留言（**已修正範本 gotcha**：使用 `collect_smoke_media.outputs.has_media`） |
 | **M** PR 守門 | `run_ai_acceptance.outcome != 'failure'` → 自動建立 PR（gh pr create，body 含測試 badge + AI 驗收 badge + `Closes #N`）；反之發「驗收失敗不自動開 PR」通知 |
 
@@ -109,7 +109,7 @@ run_integration_tests == 'true' &&
 | Prompt 模板 | `.github/prompts/{clarifier-pipeline,clarifier-interactive,planner,tdd-coordinator}.md` |
 | 留言模板 | `.github/templates/{pipeline-upgrade-comment,test-result-comment,acceptance-comment}.md` |
 | Shell script | `.github/scripts/upload-to-bunny.sh` |
-| Marketplace | `https://github.com/j7-dev/wp-workflows.git`（提供 4 個 agents） |
+| Marketplace | `https://github.com/zenbuapps/zenbu-powers.git`（提供 4 個 agents） |
 | Secrets | `CLAUDE_CODE_OAUTH_TOKEN`、`BUNNY_STORAGE_{HOST,ZONE,PASSWORD}`、`BUNNY_CDN_URL` |
 
 ---
@@ -123,6 +123,9 @@ run_integration_tests == 'true' &&
 5. **無 `build:wp`**：`package.json` 只有 `build` script，與 power-course 不同。
 6. **沒有 LC Bypass**：plugin.php 第 73 行 `'lc' => false`，已關閉授權檢查；不要再加回 LC Bypass step（會無效，因為 capability 字串不存在）。
 7. **AI 驗收的 admin 入口**：power-funnel 主入口是 `?page=power-funnel`（Powerhouse 註冊），SPA HashRouter 細節由 ReactFlow 編輯器頁定義；CPT 列表頁則走 WordPress 原生 `edit.php?post_type=pf_*`。
+8. **分支命名**：新建分支使用 `issue/{N}`（無 timestamp），`resolve_branch` 向下相容舊格式 `issue/{N}-*`。
+9. **PR_MODE 防護**：D/E/F 段所有 step（dynamic_upgrade、Planner prompt/execution、detect_planner、TDD prompt/execution）均設有 `env.PR_MODE != 'true'` 前置條件，避免 PR 模式時誤觸這些步驟。
+10. **Commit 語言**：所有 prompt 檔案中涉及 commit 的指示均要求使用繁體中文撰寫 commit message。
 
 ---
 
